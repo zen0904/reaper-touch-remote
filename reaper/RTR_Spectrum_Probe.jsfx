@@ -1,0 +1,54 @@
+desc:RTR Spectrum Probe
+slider1:0<0,255,1>Probe slot
+options:gmem=RTR_SPECTRUM
+
+@init
+fft_size=1024;
+fft_pos=0;
+peak_l=0;
+peak_r=0;
+
+@slider
+gbase=floor(slider1)*80;
+
+@sample
+peak_l=max(peak_l,abs(spl0));
+peak_r=max(peak_r,abs(spl1));
+fftbuf[fft_pos*2]=(spl0+spl1)*0.5;
+fftbuf[fft_pos*2+1]=0;
+fft_pos+=1;
+fft_pos>=fft_size ? (
+  fft_pos=0;
+  i=0;
+  loop(fft_size,
+    fftbuf[i*2]*=0.5-0.5*cos(2*$pi*i/(fft_size-1));
+    i+=1;
+  );
+  fft(fftbuf,fft_size);
+  fft_permute(fftbuf,fft_size);
+  band=0;
+  loop(64,
+    f0=20*pow(1000,band/64);
+    f1=20*pow(1000,(band+1)/64);
+    b0=min(fft_size/2-1,max(1,floor(f0*fft_size/srate)));
+    b1=min(fft_size/2-1,max(b0,floor(f1*fft_size/srate)));
+    bin=b0;
+    mag=0;
+    count=b1-b0+1;
+    loop(count,
+      re=fftbuf[bin*2];
+      im=fftbuf[bin*2+1];
+      mag+=sqrt(re*re+im*im);
+      bin+=1;
+    );
+    db=20*log(max(0.000000001,mag/count/fft_size))/log(10);
+    gmem[gbase+4+band]=min(1,max(0,(db+100)/100));
+    band+=1;
+  );
+  gmem[gbase+1]=min(1,peak_l);
+  gmem[gbase+2]=min(1,peak_r);
+  gmem[gbase+3]=srate;
+  gmem[gbase]+=1;
+  peak_l=0;
+  peak_r=0;
+);

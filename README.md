@@ -8,21 +8,22 @@ A local-first, live-use iPad control surface for REAPER on macOS. REAPER remains
 
 - Real REAPER track order, names, volume, pan, mute, solo, selection, peak meters, FX order/names/enabled state via ReaScript—no mock tracks or fake meters.
 - Authoritative full snapshots and incremental meter updates over WebSocket; reconnect always requests a new snapshot.
-- Commands for fader, pan, mute, solo, selection, FX bypass, and FX window open/close. Other connected clients see the resulting REAPER state.
-- Independent Pointer Events ownership, capture, cancel, and lost-capture handling for simultaneous faders.
-- Two-finger double-tap reset: faders return to 0.0 dB and pan controls return to center.
+- Commands for track mute, solo, selection/name, FX insertion/bypass, plug-in parameters, and plug-in page open/close. Other connected clients see the resulting REAPER state.
+- Independent Pointer Events ownership, capture, cancel, and lost-capture handling for simultaneous plug-in controls.
 - iPad landscape console UI with explicit track banks, touch-sized controls, page lock, safe areas, wake lock, manual host profiles, and installable PWA metadata/cache.
 - Bonjour/mDNS advertisement (`_reaper-touch._tcp`) and automatic reconnect to the last host.
-- A resolution-independent iPad FX panel generated for every AU/VST/VST3 plug-in from real REAPER parameter names, formatted values, normalized values, switch metadata, and step sizes.
-- SuperRack-style horizontal rack rows with eight plug-in slots as the primary workspace, thin meters, and no mixer faders on the rack page.
+- A resolution-independent iPad FX panel generated for every AU/VST/VST3/JSFX plug-in from real REAPER parameter names, formatted values, normalized values, switch metadata, and step sizes.
+- SuperRack-style vertical channel racks with compact stacked plug-in slots, thin meters, MUTE/SOLO, and no oversized mixer faders.
+- Search and add any installed REAPER plug-in directly from the iPad, and rename a rack/REAPER track from the rack header.
 - Automatic semantic sections (bands/channels, dynamics, filter/EQ, modulation, time, tone, and I/O), touch-sized switches, native drop-down choices, rotary controls, and filtering of REAPER's synthetic MIDI host controls.
-- A direct-touch six-band graph for Waves F6 plus a graphical adaptive header for every other exposed plug-in.
+- One compact parameter page at a time instead of a long scrolling plug-in form, with coalesced animation-frame control writes for smoother touch.
+- A direct-touch six-band graph for Waves F6, a real-time input FFT for the active plug-in, and truthful input/output activity meters for every exposed plug-in.
 - An optional Swift ScreenCaptureKit helper remains available for compatibility experiments, but is no longer the primary Plugin UI.
 
 ## Architecture
 
 ```text
-REAPER (audio is only here)
+REAPER (audio and analysis stay here)
    ↕ official ReaScript API
 REAPER_Touch_Remote_Bridge.lua
    ↕ atomic state file + append-only command queue
@@ -35,7 +36,7 @@ iPad PWA
 REAPER FX parameters ↔ ReaScript normalized values ↔ large iPad-native controls
 ```
 
-The bridge runs on REAPER's UI/deferred-script loop and never inserts itself in the audio signal path.
+The bridge runs on REAPER's UI/deferred-script loop. When an iPad plug-in page is open it automatically installs and enables the included transparent `RTR Spectrum Probe` JSFX immediately before that plug-in. The probe passes audio through unchanged and performs the FFT inside REAPER. It is removed from the chain when the page closes, the last remote disconnects, or the Bridge stops, so stale analyzer FX are not left in the project. The browser never receives audio—only 64 normalized spectrum bins and peak values. The OUT meter is REAPER's authoritative track output meter.
 
 ## Requirements
 
@@ -60,6 +61,8 @@ npm run build:native
 2. Choose **New action… → Load ReaScript…** and select `reaper/REAPER_Touch_Remote_Bridge.lua`.
 3. Select **REAPER Touch Remote Bridge** and press **Run**. Leave it running; stopping/closing REAPER removes its state file.
 4. Optional: assign the script to a toolbar button or startup action.
+
+After updating the project, stop the old Bridge action and run the updated script once. On startup it refreshes `installed-fx.json` for the iPad plug-in browser and installs `RTR_Spectrum_Probe.jsfx` into REAPER's Effects directory automatically.
 
 The bridge directory defaults to `~/Library/Application Support/REAPER/REAPER Touch Remote`. Override the Node side with `RTR_BRIDGE_DIR` only if REAPER uses a portable resource directory.
 
@@ -113,6 +116,8 @@ Automated tests cover snapshot/update classification. CI tests Node on Linux and
 ## Troubleshooting
 
 - **Waiting for REAPER:** confirm the ReaScript is running and the bridge paths printed by Node and returned by `reaper.GetResourcePath()` match.
+- **ADD PLUGIN says the inventory is unavailable:** restart the updated Bridge ReaScript once; it builds the installed plug-in index at startup.
+- **No spectrum yet:** play or monitor audio, open a plug-in from its blue rack slot, and confirm the updated Bridge is running. The input analyzer is active only while a plug-in page is open.
 - **iPad cannot connect:** use the numeric Mac IP, allow incoming Node connections in the macOS firewall, and disable Wi-Fi AP/client isolation.
 - **No plug-in video:** float/open the requested FX, grant Screen Recording, then restart. Some bridged or sandboxed plug-ins may own windows under a different bundle and need matcher work.
 - **Video but no touch:** grant Accessibility and restart the helper.
@@ -122,10 +127,10 @@ Automated tests cover snapshot/update classification. CI tests Node on Linux and
 ## Known limits / needs real-hardware validation
 
 - Browser-only iPadOS cannot perform general Bonjour service browsing; advertised discovery is useful to native clients, while the PWA uses `.local`, remembered host, manual IP, and retry.
-- Native plug-in interaction is deliberately single-pointer because most macOS plug-in GUIs are mouse-based.
+- The optional native plug-in streaming experiment is deliberately single-pointer because most macOS plug-in GUIs are mouse-based; the primary parameter UI supports independent Pointer Events.
 - FX window matching currently chooses the smallest visible REAPER-owned non-empty window. Bridged plug-ins, vendor helper processes, docked FX, and unusual window ownership need testing and likely per-vendor matching improvements.
 - MJPEG prioritizes compatibility and latency over bandwidth efficiency. A future VideoToolbox/WebRTC path would reduce bandwidth.
-- Vendor-authored graphics and arbitrary custom layouts cannot be reconstructed from the REAPER parameter API; every exposed parameter remains controllable through the adaptive native iPad layout, with hand-tuned profiles available for important plug-ins.
+- Vendor-authored graphics and arbitrary custom layouts cannot be reconstructed from the REAPER parameter API; every exposed parameter remains controllable through the adaptive native iPad layout, with hand-tuned graph profiles available for important plug-ins such as Waves F6.
 - Real REAPER bidirectional changes, project/track/FX mutations, Wi-Fi transitions, iPad PWA relaunch, and 2/3+ finger tests remain acceptance tests.
 
 See [docs/ACCEPTANCE_TEST.md](docs/ACCEPTANCE_TEST.md) for the exact test sheet.

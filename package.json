@@ -9,7 +9,7 @@
     "dev": "node --watch backend/src/server.js",
     "test": "node --test",
     "build:native": "sh scripts/build-native.sh",
-    "check": "node --check backend/src/server.js && node --test"
+    "check": "node --check backend/src/server.js && node --check frontend/app.js && node --test"
   },
   "engines": { "node": ">=20" },
   "dependencies": {

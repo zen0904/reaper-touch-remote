@@ -12,6 +12,7 @@ import { ALLOWED_COMMANDS, PROTOCOL_VERSION, ServerType } from "../../shared/pro
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const frontend = path.join(root, "frontend");
+const installedFxFile = path.join(config.bridgeDir, "installed-fx.json");
 const state = new StateManager();
 const reaper = new ReaperAdapter(config.bridgeDir, config.statePollMs);
 
@@ -20,6 +21,10 @@ const server = http.createServer((req, res) => {
   if (req.url === "/health") return json(res, 200, { ok: true, reaper: Boolean(state.snapshot), protocol: PROTOCOL_VERSION });
   if (req.url?.startsWith("/capture/")) return proxyCapture(req, res);
   const pathname = new URL(req.url, "http://local").pathname;
+  if (pathname === "/api/fx") return fs.readFile(installedFxFile, "utf8", (error, body) => {
+    if (error) return json(res, 503, { error: "fx_inventory_unavailable" });
+    try { return json(res, 200, JSON.parse(body)); } catch { return json(res, 503, { error: "fx_inventory_invalid" }); }
+  });
   const requested = pathname === "/" ? "index.html" : pathname.slice(1);
   const file = path.resolve(frontend, requested);
   if (!file.startsWith(frontend)) return json(res, 403, { error: "forbidden" });
@@ -33,8 +38,13 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocketServer({ server, path: "/ws", perMessageDeflate: false });
 const send = (ws, payload) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(payload));
 const broadcast = (payload) => wss.clients.forEach((client) => send(client, payload));
+let remoteFxCleanupTimer;
+const closeRemoteFx = () => {
+  try { reaper.command({ id: `server-close-${Date.now()}`, action: "close_fx" }); } catch { /* Bridge may already be unavailable during shutdown. */ }
+};
 
 wss.on("connection", (ws) => {
+  clearTimeout(remoteFxCleanupTimer);
   send(ws, { type: ServerType.HELLO, protocol: PROTOCOL_VERSION, server: "REAPER Touch Remote", hostname: os.hostname() });
   if (state.snapshot) send(ws, { type: ServerType.SNAPSHOT, ...state.snapshot });
   else send(ws, { type: ServerType.STATUS, reaper: "waiting" });
@@ -49,6 +59,7 @@ wss.on("connection", (ws) => {
       send(ws, { type: ServerType.ACK, id: message.id, status: "queued" });
     } catch (error) { send(ws, { type: ServerType.ERROR, id: message.id, error: error.message }); }
   });
+  ws.on("close", () => { remoteFxCleanupTimer = setTimeout(() => { if (wss.clients.size === 0) closeRemoteFx(); }, 1000); });
 });
 
 state.on("snapshot", (snapshot) => broadcast({ type: ServerType.SNAPSHOT, ...snapshot }));
@@ -64,7 +75,7 @@ server.listen(config.port, config.host, () => {
   console.log(`Bridge directory: ${config.bridgeDir}`);
 });
 
-function json(res, status, value) { res.writeHead(status, { "content-type": "application/json" }); res.end(JSON.stringify(value)); }
+function json(res, status, value) { res.writeHead(status, { "content-type": "application/json", "cache-control": "no-cache, no-store, must-revalidate" }); res.end(JSON.stringify(value)); }
 function proxyCapture(req, res) {
   const upstream = new URL(req.url.replace(/^\/capture/, ""), config.captureURL);
   const proxy = http.request(upstream, { method: req.method, headers: { ...req.headers, host: upstream.host } }, (response) => {
@@ -74,5 +85,5 @@ function proxyCapture(req, res) {
   req.pipe(proxy);
 }
 
-function shutdown() { bonjour.unpublishAll(() => bonjour.destroy()); reaper.stop(); wss.close(); server.close(); }
+function shutdown() { clearTimeout(remoteFxCleanupTimer); closeRemoteFx(); bonjour.unpublishAll(() => bonjour.destroy()); reaper.stop(); wss.close(); server.close(); }
 process.on("SIGINT", shutdown); process.on("SIGTERM", shutdown);

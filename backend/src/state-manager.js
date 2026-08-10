@@ -2,7 +2,7 @@ import { EventEmitter } from "node:events";
 
 function stableWithoutMeters(state) {
   const { timestamp, ...withoutClock } = state;
-  return JSON.stringify({ ...withoutClock, tracks: state.tracks?.map(({ meter, ...track }) => track) });
+  return JSON.stringify({ ...withoutClock, tracks: state.tracks?.map(({ meter, signal, ...track }) => track) });
 }
 
 export class StateManager extends EventEmitter {
@@ -22,7 +22,7 @@ export class StateManager extends EventEmitter {
       this.#structural = structural;
       this.emit("snapshot", this.snapshot);
     } else {
-      const meters = next.tracks.map((track) => ({ id: track.id, meter: track.meter }));
+      const meters = next.tracks.map((track) => ({ id: track.id, meter: track.meter, signal: track.signal }));
       this.emit("update", { seq: this.#seq, changes: { meters } });
     }
     return true;
