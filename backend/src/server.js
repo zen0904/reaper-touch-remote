@@ -25,7 +25,7 @@ const server = http.createServer((req, res) => {
   if (!file.startsWith(frontend)) return json(res, 403, { error: "forbidden" });
   fs.readFile(file, (error, body) => {
     if (error) return json(res, 404, { error: "not_found" });
-    res.writeHead(200, { "content-type": mime[path.extname(file)] || "application/octet-stream", "cache-control": requested === "service-worker.js" ? "no-cache" : "public, max-age=300" });
+    res.writeHead(200, { "content-type": mime[path.extname(file)] || "application/octet-stream", "cache-control": "no-cache, no-store, must-revalidate" });
     res.end(body);
   });
 });
