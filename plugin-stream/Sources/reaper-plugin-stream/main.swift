@@ -30,5 +30,18 @@ final class HTTPServer: @unchecked Sendable {
 }
 
 let capture=CaptureService()
-Task {do{try await capture.start();let server=try HTTPServer(capture:capture);server.start()}catch{fputs("REAPER Plugin Stream: \(error.localizedDescription)\n",stderr);exit(1)}}
+Task {
+    do {
+        let server=try HTTPServer(capture:capture);server.start()
+        while true {
+            do { try await capture.start(); break }
+            catch {
+                fputs("Waiting for a visible REAPER FX window: \(error.localizedDescription)\n",stderr)
+                try await Task.sleep(for:.seconds(1))
+            }
+        }
+    } catch {
+        fputs("REAPER Plugin Stream: \(error.localizedDescription)\n",stderr);exit(1)
+    }
+}
 dispatchMain()
