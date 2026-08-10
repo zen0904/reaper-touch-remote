@@ -20,7 +20,7 @@ local function escape(value)
 end
 local function json_string(value) return '"' .. escape(value) .. '"' end
 local function bool(value) return value and "true" or "false" end
-local function number(value) if value ~= value or value == math.huge or value == -math.huge then return "0" end return string.format("%.8g", value) end
+local function number(value) value=tonumber(value) or 0; if value ~= value or value == math.huge or value == -math.huge then return "0" end return string.format("%.8g", value) end
 
 local function find_track(guid)
   for i = 0, reaper.CountTracks(0) - 1 do local track = reaper.GetTrack(0, i) if reaper.GetTrackGUID(track) == guid then return track end end
@@ -79,7 +79,11 @@ local function selected_fx_json()
   for i=0,reaper.TrackFX_GetNumParams(track,selected_fx_index)-1 do
     local _,name=reaper.TrackFX_GetParamName(track,selected_fx_index,i,"")
     local _,formatted=reaper.TrackFX_GetFormattedParamValue(track,selected_fx_index,i,"")
-    params[#params+1]='{"index":'..i..',"name":'..json_string(name)..',"value":'..number(reaper.TrackFX_GetParamNormalized(track,selected_fx_index,i))..',"formatted":'..json_string(formatted)..'}'
+    local _,step,small_step,large_step,is_toggle=reaper.TrackFX_GetParameterStepSizes(track,selected_fx_index,i)
+    local _,min_value,max_value=reaper.TrackFX_GetParamEx(track,selected_fx_index,i)
+    local span=(max_value or 1)-(min_value or 0)
+    if span > 0 then step=(step or 0)/span;small_step=(small_step or 0)/span;large_step=(large_step or 0)/span end
+    params[#params+1]='{"index":'..i..',"name":'..json_string(name)..',"value":'..number(reaper.TrackFX_GetParamNormalized(track,selected_fx_index,i))..',"formatted":'..json_string(formatted)..',"step":'..number(step)..',"smallStep":'..number(small_step)..',"largeStep":'..number(large_step)..',"toggle":'..bool(is_toggle)..'}'
   end
   return '{"trackId":'..json_string(selected_track_guid)..',"fxIndex":'..selected_fx_index..',"name":'..json_string(fx_name)..',"parameters":['..table.concat(params,",")..']}'
 end

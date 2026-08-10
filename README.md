@@ -13,7 +13,8 @@ A local-first, live-use iPad control surface for REAPER on macOS. REAPER remains
 - Two-finger double-tap reset: faders return to 0.0 dB and pan controls return to center.
 - iPad landscape console UI with explicit track banks, touch-sized controls, page lock, safe areas, wake lock, manual host profiles, and installable PWA metadata/cache.
 - Bonjour/mDNS advertisement (`_reaper-touch._tcp`) and automatic reconnect to the last host.
-- A resolution-independent iPad FX panel generated from real REAPER parameter names, formatted values, and normalized values.
+- A resolution-independent iPad FX panel generated for every AU/VST/VST3 plug-in from real REAPER parameter names, formatted values, normalized values, switch metadata, and step sizes.
+- Automatic semantic sections (bands/channels, dynamics, filter/EQ, modulation, time, tone, and I/O), touch-sized switches, discrete steppers, continuous sliders, and filtering of REAPER's synthetic MIDI host controls.
 - An optional Swift ScreenCaptureKit helper remains available for compatibility experiments, but is no longer the primary Plugin UI.
 
 ## Architecture
@@ -122,7 +123,7 @@ Automated tests cover snapshot/update classification. CI tests Node on Linux and
 - Native plug-in interaction is deliberately single-pointer because most macOS plug-in GUIs are mouse-based.
 - FX window matching currently chooses the smallest visible REAPER-owned non-empty window. Bridged plug-ins, vendor helper processes, docked FX, and unusual window ownership need testing and likely per-vendor matching improvements.
 - MJPEG prioritizes compatibility and latency over bandwidth efficiency. A future VideoToolbox/WebRTC path would reduce bandwidth.
-- FX wet/dry, parameter metadata/values, and presets are not implemented.
+- Vendor-authored graphics and arbitrary custom layouts cannot be reconstructed from the REAPER parameter API; every exposed parameter remains controllable through the adaptive native iPad layout, with hand-tuned profiles available for important plug-ins.
 - Real REAPER bidirectional changes, project/track/FX mutations, Wi-Fi transitions, iPad PWA relaunch, and 2/3+ finger tests remain acceptance tests.
 
 See [docs/ACCEPTANCE_TEST.md](docs/ACCEPTANCE_TEST.md) for the exact test sheet.
