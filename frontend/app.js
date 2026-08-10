@@ -1,6 +1,14 @@
 const $ = (selector) => document.querySelector(selector);
 const els = { mixer:$("#mixer"), project:$("#project"), connection:$("#connection"), bank:$("#bankLabel"), settings:$("#settings"), host:$("#host"), port:$("#port"), pluginView:$("#pluginView"), stream:$("#pluginStream"), surface:$("#pluginSurface") };
 const settings = JSON.parse(localStorage.getItem("rtr.connection") || "null") || { host:location.hostname, port:location.port || "47830", auto:true };
+// The origin that successfully served the app is the best authority after DHCP/network changes.
+// Without this, a remembered WebSocket host can keep targeting yesterday's IP while the UI
+// itself loads from today's IP, leaving a plausible-looking but disconnected mixer.
+if (location.hostname && settings.host !== location.hostname) {
+  settings.host = location.hostname;
+  settings.port = location.port || "47830";
+  localStorage.setItem("rtr.connection", JSON.stringify(settings));
+}
 let socket, heartbeat, reconnectTimer, state, bank=0, bankSize=8, latency=0, activeFX=null;
 const pointers = new Map();
 
