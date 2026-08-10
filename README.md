@@ -13,7 +13,8 @@ A local-first, live-use iPad control surface for REAPER on macOS. REAPER remains
 - Two-finger double-tap reset: faders return to 0.0 dB and pan controls return to center.
 - iPad landscape console UI with explicit track banks, touch-sized controls, page lock, safe areas, wake lock, manual host profiles, and installable PWA metadata/cache.
 - Bonjour/mDNS advertisement (`_reaper-touch._tcp`) and automatic reconnect to the last host.
-- A Swift ScreenCaptureKit helper that captures one REAPER-owned FX window to a ~30 FPS MJPEG stream and maps normalized iPad coordinates to macOS mouse input.
+- A resolution-independent iPad FX panel generated from real REAPER parameter names, formatted values, and normalized values.
+- An optional Swift ScreenCaptureKit helper remains available for compatibility experiments, but is no longer the primary Plugin UI.
 
 ## Architecture
 
@@ -28,8 +29,7 @@ iPad PWA
 ```
 
 ```text
-Native FX window → ScreenCaptureKit single-window filter → MJPEG → iPad
-Native FX window ← macOS CGEvent mouse input             ← touch coordinates
+REAPER FX parameters ↔ ReaScript normalized values ↔ large iPad-native controls
 ```
 
 The bridge runs on REAPER's UI/deferred-script loop and never inserts itself in the audio signal path.
@@ -66,7 +66,7 @@ The bridge directory defaults to `~/Library/Application Support/REAPER/REAPER To
 ./scripts/start.sh
 ```
 
-This starts the native helper when it has been built and then the web/state server. Open `http://MAC-IP:47830` on the iPad. The health endpoint is `http://localhost:47830/health`.
+This starts the web/state server. Open `http://MAC-IP:47830` on the iPad. The health endpoint is `http://localhost:47830/health`. Native window streaming is optional and can be enabled with `RTR_ENABLE_NATIVE_STREAM=1 ./scripts/start.sh`.
 
 The server advertises `_reaper-touch._tcp` with Bonjour. Safari web pages cannot enumerate arbitrary mDNS service records, so a first URL must be entered once. Prefer the Mac's stable Bonjour name (`http://your-mac-name.local:47830`) or the manual IP screen. The PWA remembers it and rediscovers connectivity by retrying; native service browsing would require a signed iPad app.
 

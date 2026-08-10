@@ -8,6 +8,8 @@ local temp_file = bridge_dir .. sep .. "state.json.tmp"
 local command_file = bridge_dir .. sep .. "commands.tsv"
 local command_offset = 0
 local last_write = 0
+local selected_track_guid = nil
+local selected_fx_index = nil
 
 local function shell_quote(value) return "'" .. value:gsub("'", "'\\''") .. "'" end
 os.execute("mkdir -p " .. shell_quote(bridge_dir))
@@ -27,6 +29,10 @@ local function split_target(target)
   local track_guid, fx = target:match("^(.-)|(%-?%d+)$")
   return track_guid, tonumber(fx)
 end
+local function split_param_target(target)
+  local track_guid, fx, param = target:match("^(.-)|(%-?%d+)|(%-?%d+)$")
+  return track_guid, tonumber(fx), tonumber(param)
+end
 
 local function apply_command(line)
   local id, action, target, value = line:match("^([^\t]*)\t([^\t]*)\t([^\t]*)\t?(.*)$")
@@ -37,8 +43,9 @@ local function apply_command(line)
   elseif action == "set_track_solo" then local track=find_track(target); if track then reaper.SetMediaTrackInfo_Value(track,"I_SOLO",tonumber(value)==1 and 2 or 0) end
   elseif action == "select_track" then local track=find_track(target); if track then reaper.SetOnlyTrackSelected(track); reaper.Main_OnCommand(40913,0) end
   elseif action == "set_fx_bypass" then local guid,fx=split_target(target); local track=find_track(guid); if track and fx then reaper.TrackFX_SetEnabled(track,fx,tonumber(value)~=1) end
-  elseif action == "open_fx" then local guid,fx=split_target(target); local track=find_track(guid); if track and fx then reaper.SetOnlyTrackSelected(track); reaper.TrackFX_Show(track,fx,3) end
-  elseif action == "close_fx" then local guid,fx=split_target(target); local track=find_track(guid); if track and fx then reaper.TrackFX_Show(track,fx,2) end end
+  elseif action == "set_fx_param" then local guid,fx,param=split_param_target(target); local track=find_track(guid); if track and fx and param then reaper.TrackFX_SetParamNormalized(track,fx,param,math.max(0,math.min(1,tonumber(value) or 0))) end
+  elseif action == "open_fx" then local guid,fx=split_target(target); local track=find_track(guid); if track and fx then selected_track_guid=guid;selected_fx_index=fx;reaper.SetOnlyTrackSelected(track) end
+  elseif action == "close_fx" then selected_track_guid=nil;selected_fx_index=nil end
 end
 
 local function read_commands()
@@ -63,10 +70,23 @@ local function track_json(track,index)
   local left_db=left>0 and 20*math.log(left,10) or -100; local right_db=right>0 and 20*math.log(right,10) or -100
   return '{"id":'..json_string(reaper.GetTrackGUID(track))..',"number":'..(index+1)..',"name":'..json_string(name)..',"volume":'..number(reaper.GetMediaTrackInfo_Value(track,"D_VOL"))..',"pan":'..number(reaper.GetMediaTrackInfo_Value(track,"D_PAN"))..',"mute":'..bool(reaper.GetMediaTrackInfo_Value(track,"B_MUTE")>0.5)..',"solo":'..bool(reaper.GetMediaTrackInfo_Value(track,"I_SOLO")>0)..',"selected":'..bool(reaper.IsTrackSelected(track))..',"meter":['..number(left_db)..','..number(right_db)..'],"fx":'..fx_json(track)..'}'
 end
+local function selected_fx_json()
+  if not selected_track_guid or selected_fx_index == nil then return "null" end
+  local track=find_track(selected_track_guid)
+  if not track or selected_fx_index >= reaper.TrackFX_GetCount(track) then return "null" end
+  local _,fx_name=reaper.TrackFX_GetFXName(track,selected_fx_index,"")
+  local params={}
+  for i=0,reaper.TrackFX_GetNumParams(track,selected_fx_index)-1 do
+    local _,name=reaper.TrackFX_GetParamName(track,selected_fx_index,i,"")
+    local _,formatted=reaper.TrackFX_GetFormattedParamValue(track,selected_fx_index,i,"")
+    params[#params+1]='{"index":'..i..',"name":'..json_string(name)..',"value":'..number(reaper.TrackFX_GetParamNormalized(track,selected_fx_index,i))..',"formatted":'..json_string(formatted)..'}'
+  end
+  return '{"trackId":'..json_string(selected_track_guid)..',"fxIndex":'..selected_fx_index..',"name":'..json_string(fx_name)..',"parameters":['..table.concat(params,",")..']}'
+end
 local function write_state()
   local _,project_path=reaper.EnumProjects(-1,""); local name=project_path:match("([^/\\]+)%.rpp$") or "Untitled"
   local tracks={}; for i=0,reaper.CountTracks(0)-1 do tracks[#tracks+1]=track_json(reaper.GetTrack(0,i),i) end
-  local payload='{"project":{"name":'..json_string(name)..',"path":'..json_string(project_path)..',"changeCount":'..reaper.GetProjectStateChangeCount(0)..'},"tracks":['..table.concat(tracks,",")..'],"timestamp":'..number(reaper.time_precise())..'}'
+  local payload='{"project":{"name":'..json_string(name)..',"path":'..json_string(project_path)..',"changeCount":'..reaper.GetProjectStateChangeCount(0)..'},"tracks":['..table.concat(tracks,",")..'],"selectedFx":'..selected_fx_json()..',"timestamp":'..number(reaper.time_precise())..'}'
   local file=io.open(temp_file,"w"); if not file then return end; file:write(payload); file:flush(); file:close(); os.rename(temp_file,state_file)
 end
 local function loop()

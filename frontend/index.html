@@ -27,7 +27,7 @@
     <section id="empty" class="empty"><h1>Waiting for REAPER</h1><p>Run the bridge ReaScript in REAPER. Audio remains entirely inside REAPER.</p></section>
     <section id="pluginView" class="plugin-view" hidden>
       <nav><button id="pluginBack">BACK</button><button id="pluginPrev">PREV FX</button><div><strong id="pluginTrack"></strong><span id="pluginName"></span></div><button id="pluginBypass">BYPASS</button><button id="pluginNext">NEXT FX</button></nav>
-      <div id="pluginSurface" class="plugin-surface"><img id="pluginStream" draggable="false" alt="Native plugin window stream"><div class="plugin-message">Waiting for native capture helper…</div></div>
+      <div id="pluginSurface" class="plugin-surface"><div id="parameterPanel" class="parameter-panel"><div class="plugin-message">Loading parameters from REAPER…</div></div></div>
     </section>
     <dialog id="settings"><form method="dialog"><h2>Connection</h2><label>Host or IP<input id="host" inputmode="url" autocomplete="off"></label><label>Port<input id="port" type="number" min="1" max="65535"></label><label class="checkbox"><input id="auto" type="checkbox" checked> Auto reconnect</label><p id="details"></p><menu><button value="cancel">CANCEL</button><button id="saveConnection" value="default">CONNECT</button></menu></form></dialog>
     <div id="rotate">Rotate to landscape for the live console layout.</div>

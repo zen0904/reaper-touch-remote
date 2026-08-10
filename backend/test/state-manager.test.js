@@ -19,3 +19,11 @@ test("structural changes produce authoritative snapshot", () => {
   manager.ingest(sample()); const changed = sample(); changed.tracks[0].mute = true; manager.ingest(changed);
   assert.equal(snapshots, 2);
 });
+
+test("bridge clock changes do not rebuild the control surface", () => {
+  const manager = new StateManager(); let snapshots = 0; let updates = 0;
+  manager.on("snapshot", () => snapshots++); manager.on("update", () => updates++);
+  manager.ingest({ ...sample(), timestamp: 1 });
+  manager.ingest({ ...sample([-15, -14]), timestamp: 2 });
+  assert.equal(snapshots, 1); assert.equal(updates, 1);
+});

@@ -1,7 +1,8 @@
 import { EventEmitter } from "node:events";
 
 function stableWithoutMeters(state) {
-  return JSON.stringify({ ...state, tracks: state.tracks?.map(({ meter, ...track }) => track) });
+  const { timestamp, ...withoutClock } = state;
+  return JSON.stringify({ ...withoutClock, tracks: state.tracks?.map(({ meter, ...track }) => track) });
 }
 
 export class StateManager extends EventEmitter {
