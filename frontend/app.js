@@ -27,7 +27,7 @@ function handle(message) {
   if(message.type==="state_update" && state) { for(const item of message.changes.meters||[]){const track=state.tracks.find(t=>t.id===item.id);if(track)track.meter=item.meter;} renderMeters(); }
   if(message.type==="heartbeat") { latency=Math.max(0,Math.round((Date.now()-message.echo)/2));setConnection("online",`REAPER · ${latency} ms`); }
 }
-function command(action,target,value="") { if(socket?.readyState!==WebSocket.OPEN)return;socket.send(JSON.stringify({type:"command",id:crypto.randomUUID(),action,target,value})); }
+function command(action,target,value="") { if(socket?.readyState!==WebSocket.OPEN)return;const id=globalThis.crypto?.randomUUID?.()||`cmd-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;socket.send(JSON.stringify({type:"command",id,action,target,value})); }
 function render(){
   els.project.textContent=state.project.name||"Untitled"; bankSize=innerWidth<900?6:8; document.documentElement.style.setProperty("--bank-size",bankSize); const count=Math.max(1,Math.ceil(state.tracks.length/bankSize));bank=Math.min(bank,count-1);els.bank.textContent=`${bank+1} / ${count}`;
   els.mixer.replaceChildren(...state.tracks.slice(bank*bankSize,(bank+1)*bankSize).map(trackStrip)); renderMeters();
