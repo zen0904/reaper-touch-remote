@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#080b0f">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/icon-192.svg">
-  <link rel="stylesheet" href="/styles.css?v=9">
+  <link rel="stylesheet" href="/styles.css?v=10">
   <title>REAPER Touch Remote</title>
 </head>
 <body>
@@ -27,13 +27,13 @@
     <section id="empty" class="empty"><h1>Waiting for REAPER</h1><p>Run the bridge ReaScript in REAPER. Audio remains entirely inside REAPER.</p></section>
     <section id="pluginView" class="plugin-view" hidden>
       <nav><button id="pluginBack">MIXER</button><button id="pluginPrev">◀ FX</button><div><strong id="pluginTrack"></strong><span id="pluginName"></span></div><button id="pluginBypass">BYPASS</button><button id="pluginNext">FX ▶</button></nav>
-      <div class="plugin-workspace"><aside><h3>RACK</h3><div id="rackChain" class="rack-chain"></div></aside><div id="pluginSurface" class="plugin-surface"><div id="parameterPanel" class="parameter-panel"><div class="plugin-message">Loading parameters from REAPER…</div></div></div></div>
+      <div class="plugin-workspace"><aside><h3>RACK</h3><div id="rackChain" class="rack-chain"></div></aside><div id="pluginSurface" class="plugin-surface"><div id="pluginVisual" class="plugin-visual"></div><div id="parameterPanel" class="parameter-panel"><div class="plugin-message">Loading parameters from REAPER…</div></div></div></div>
     </section>
     <footer class="hotbar"><button id="showPanel">SHOW</button><button id="quickSave">SAVE SNAP</button><div class="hot-group"><span>USER KEYS</span><button data-user-key="0">1</button><button data-user-key="1">2</button><button data-user-key="2">3</button><button data-user-key="3">4</button></div><div class="hot-group"><span>HOT FX</span><button data-hot-fx="0">1</button><button data-hot-fx="1">2</button><button data-hot-fx="2">3</button><button data-hot-fx="3">4</button></div></footer>
     <dialog id="settings"><form method="dialog"><h2>Connection</h2><label>Host or IP<input id="host" inputmode="url" autocomplete="off"></label><label>Port<input id="port" type="number" min="1" max="65535"></label><label class="checkbox"><input id="auto" type="checkbox" checked> Auto reconnect</label><p id="details"></p><menu><button value="cancel">CANCEL</button><button id="saveConnection" value="default">CONNECT</button></menu></form></dialog>
     <dialog id="snapshots"><div class="show-head"><div><h2>SHOW / SNAPSHOTS</h2><p>Recall is sent to REAPER and confirmed by authoritative feedback.</p></div><button id="closeSnapshots">CLOSE</button></div><div class="snapshot-create"><input id="snapshotName" maxlength="32" placeholder="Snapshot name"><button id="saveSnapshot">SAVE CURRENT</button></div><div id="snapshotList" class="snapshot-list"></div></dialog>
     <div id="rotate">Rotate to landscape for the live console layout.</div>
   </main>
-  <script type="module" src="/app.js?v=9"></script>
+  <script type="module" src="/app.js?v=10"></script>
 </body>
 </html>

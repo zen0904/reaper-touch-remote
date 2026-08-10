@@ -10,6 +10,7 @@ local command_offset = 0
 local last_write = 0
 local selected_track_guid = nil
 local selected_fx_index = nil
+local parameter_choice_cache = {}
 
 local function shell_quote(value) return "'" .. value:gsub("'", "'\\''") .. "'" end
 os.execute("mkdir -p " .. shell_quote(bridge_dir))
@@ -75,6 +76,7 @@ local function selected_fx_json()
   local track=find_track(selected_track_guid)
   if not track or selected_fx_index >= reaper.TrackFX_GetCount(track) then return "null" end
   local _,fx_name=reaper.TrackFX_GetFXName(track,selected_fx_index,"")
+  local fx_guid=reaper.TrackFX_GetFXGUID(track,selected_fx_index) or selected_track_guid.."|"..selected_fx_index
   local params={}
   for i=0,reaper.TrackFX_GetNumParams(track,selected_fx_index)-1 do
     local _,name=reaper.TrackFX_GetParamName(track,selected_fx_index,i,"")
@@ -83,7 +85,9 @@ local function selected_fx_json()
     local _,min_value,max_value=reaper.TrackFX_GetParamEx(track,selected_fx_index,i)
     local span=(max_value or 1)-(min_value or 0)
     if span > 0 then step=(step or 0)/span;small_step=(small_step or 0)/span;large_step=(large_step or 0)/span end
-    params[#params+1]='{"index":'..i..',"name":'..json_string(name)..',"value":'..number(reaper.TrackFX_GetParamNormalized(track,selected_fx_index,i))..',"formatted":'..json_string(formatted)..',"step":'..number(step)..',"smallStep":'..number(small_step)..',"largeStep":'..number(large_step)..',"toggle":'..bool(is_toggle)..'}'
+    local cache_key=fx_guid.."|"..i;local choices_json=parameter_choice_cache[cache_key]
+    if not choices_json then local choices={};local choice_count=step and step>0 and math.floor(1/step+0.5) or 0;if not is_toggle and choice_count>=2 and choice_count<=32 then for choice=0,choice_count do local value=math.min(1,choice*step);local _,label=reaper.TrackFX_FormatParamValueNormalized(track,selected_fx_index,i,value);choices[#choices+1]='{"value":'..number(value)..',"label":'..json_string(label~="" and label or math.floor(value*100+0.5).."%")..'}' end end;choices_json="["..table.concat(choices,",").."]";parameter_choice_cache[cache_key]=choices_json end
+    params[#params+1]='{"index":'..i..',"name":'..json_string(name)..',"value":'..number(reaper.TrackFX_GetParamNormalized(track,selected_fx_index,i))..',"formatted":'..json_string(formatted)..',"step":'..number(step)..',"smallStep":'..number(small_step)..',"largeStep":'..number(large_step)..',"toggle":'..bool(is_toggle)..',"choices":'..choices_json..'}'
   end
   return '{"trackId":'..json_string(selected_track_guid)..',"fxIndex":'..selected_fx_index..',"name":'..json_string(fx_name)..',"parameters":['..table.concat(params,",")..']}'
 end
