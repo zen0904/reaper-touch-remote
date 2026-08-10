@@ -86,6 +86,7 @@ function usableParameters(parameters=[]){
 }
 function renderPluginVisual(selected,params){
   const isF6=/\bF6\b/i.test(selected.name)&&[1,2,3,4,5,6].every(band=>params.some(param=>param.name===`Band ${band} Freq`)&&params.some(param=>param.name===`Band ${band} Gain`));
+  els.pluginView.style.setProperty("--plugin-accent",isF6?"#d99058":/delay|echo/i.test(selected.name)?"#d6ad39":"#28a7cf");
   const visualKey=`${selected.trackId}|${selected.fxIndex}|${isF6?"f6":"generic"}`;
   if(els.visual.dataset.key!==visualKey){els.visual.dataset.key=visualKey;isF6?buildF6Visual(selected,params):buildGenericVisual(selected,params)}
   if(isF6)updateF6Visual(params);
