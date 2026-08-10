@@ -14,7 +14,7 @@ A local-first, live-use iPad control surface for REAPER on macOS. REAPER remains
 - iPad landscape console UI with explicit track banks, touch-sized controls, page lock, safe areas, wake lock, manual host profiles, and installable PWA metadata/cache.
 - Bonjour/mDNS advertisement (`_reaper-touch._tcp`) and automatic reconnect to the last host.
 - A resolution-independent iPad FX panel generated for every AU/VST/VST3 plug-in from real REAPER parameter names, formatted values, normalized values, switch metadata, and step sizes.
-- SuperRack-style horizontal rack rows with plug-in slots as the primary workspace and compact secondary volume/pan controls.
+- SuperRack-style horizontal rack rows with eight plug-in slots as the primary workspace, thin meters, and no mixer faders on the rack page.
 - Automatic semantic sections (bands/channels, dynamics, filter/EQ, modulation, time, tone, and I/O), touch-sized switches, native drop-down choices, rotary controls, and filtering of REAPER's synthetic MIDI host controls.
 - A direct-touch six-band graph for Waves F6 plus a graphical adaptive header for every other exposed plug-in.
 - An optional Swift ScreenCaptureKit helper remains available for compatibility experiments, but is no longer the primary Plugin UI.
