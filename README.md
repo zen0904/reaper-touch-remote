@@ -10,6 +10,7 @@ A local-first, live-use iPad control surface for REAPER on macOS. REAPER remains
 - Authoritative full snapshots and incremental meter updates over WebSocket; reconnect always requests a new snapshot.
 - Commands for fader, pan, mute, solo, selection, FX bypass, and FX window open/close. Other connected clients see the resulting REAPER state.
 - Independent Pointer Events ownership, capture, cancel, and lost-capture handling for simultaneous faders.
+- Two-finger double-tap reset: faders return to 0.0 dB and pan controls return to center.
 - iPad landscape console UI with explicit track banks, touch-sized controls, page lock, safe areas, wake lock, manual host profiles, and installable PWA metadata/cache.
 - Bonjour/mDNS advertisement (`_reaper-touch._tcp`) and automatic reconnect to the last host.
 - A Swift ScreenCaptureKit helper that captures one REAPER-owned FX window to a ~30 FPS MJPEG stream and maps normalized iPad coordinates to macOS mouse input.
