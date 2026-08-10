@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#080b0f">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/icon-192.svg">
+  <link rel="stylesheet" href="/styles.css">
+  <title>REAPER Touch Remote</title>
+</head>
+<body>
+  <main id="app" class="app-shell control-surface">
+    <header class="topbar">
+      <div><strong>REAPER</strong><span id="project">Waiting for project</span></div>
+      <div class="top-actions">
+        <button id="bankPrev" aria-label="Previous track bank">◀ BANK</button>
+        <span id="bankLabel">—</span>
+        <button id="bankNext" aria-label="Next track bank">BANK ▶</button>
+        <button id="wake">KEEP AWAKE</button>
+        <button id="connection" class="connection"><i></i><span>Connecting</span></button>
+      </div>
+    </header>
+    <section id="mixer" class="mixer" aria-label="Track mixer"></section>
+    <section id="empty" class="empty"><h1>Waiting for REAPER</h1><p>Run the bridge ReaScript in REAPER. Audio remains entirely inside REAPER.</p></section>
+    <section id="pluginView" class="plugin-view" hidden>
+      <nav><button id="pluginBack">BACK</button><button id="pluginPrev">PREV FX</button><div><strong id="pluginTrack"></strong><span id="pluginName"></span></div><button id="pluginBypass">BYPASS</button><button id="pluginNext">NEXT FX</button></nav>
+      <div id="pluginSurface" class="plugin-surface"><img id="pluginStream" draggable="false" alt="Native plugin window stream"><div class="plugin-message">Waiting for native capture helper…</div></div>
+    </section>
+    <dialog id="settings"><form method="dialog"><h2>Connection</h2><label>Host or IP<input id="host" inputmode="url" autocomplete="off"></label><label>Port<input id="port" type="number" min="1" max="65535"></label><label class="checkbox"><input id="auto" type="checkbox" checked> Auto reconnect</label><p id="details"></p><menu><button value="cancel">CANCEL</button><button id="saveConnection" value="default">CONNECT</button></menu></form></dialog>
+    <div id="rotate">Rotate to landscape for the live console layout.</div>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
