@@ -1,0 +1,7 @@
+node_modules/
+.DS_Store
+.reaper-touch-remote/
+plugin-stream/.build/
+coverage/
+*.log
+work/
