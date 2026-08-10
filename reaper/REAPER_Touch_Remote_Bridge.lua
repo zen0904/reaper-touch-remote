@@ -25,6 +25,16 @@ end
 local function json_string(value) return '"' .. escape(value) .. '"' end
 local function bool(value) return value and "true" or "false" end
 local function number(value) value=tonumber(value) or 0; if value ~= value or value == math.huge or value == -math.huge then return "0" end return string.format("%.8g", value) end
+local function format_param_normalized(track,fx,param,value)
+  -- Older REAPER Lua bindings require an explicit output-buffer string, while
+  -- newer releases expose the same API with four arguments. Support both and
+  -- treat unsupported vendor formatting as an empty label instead of aborting
+  -- the continuously running bridge.
+  local ok,retval,label=pcall(reaper.TrackFX_FormatParamValueNormalized,track,fx,param,value,"")
+  if not ok then ok,retval,label=pcall(reaper.TrackFX_FormatParamValueNormalized,track,fx,param,value) end
+  if not ok or not retval then return "" end
+  return label or ""
+end
 
 local probe_source=[=[desc:RTR Spectrum Probe
 slider1:0<0,255,1>Probe slot
@@ -169,7 +179,7 @@ local function selected_fx_json()
     local span=(max_value or 1)-(min_value or 0)
     if span > 0 then step=(step or 0)/span;small_step=(small_step or 0)/span;large_step=(large_step or 0)/span end
     local cache_key=fx_guid.."|"..i;local choices_json=parameter_choice_cache[cache_key]
-    if not choices_json then local choices={};local choice_count=step and step>0 and math.floor(1/step+0.5) or 0;if not is_toggle and choice_count>=2 and choice_count<=32 then for choice=0,choice_count do local value=math.min(1,choice*step);local _,label=reaper.TrackFX_FormatParamValueNormalized(track,selected_fx_index,i,value);choices[#choices+1]='{"value":'..number(value)..',"label":'..json_string(label~="" and label or math.floor(value*100+0.5).."%")..'}' end end;choices_json="["..table.concat(choices,",").."]";parameter_choice_cache[cache_key]=choices_json end
+    if not choices_json then local choices={};local choice_count=step and step>0 and math.floor(1/step+0.5) or 0;if not is_toggle and choice_count>=2 and choice_count<=32 then for choice=0,choice_count do local value=math.min(1,choice*step);local label=format_param_normalized(track,selected_fx_index,i,value);choices[#choices+1]='{"value":'..number(value)..',"label":'..json_string(label~="" and label or math.floor(value*100+0.5).."%")..'}' end end;choices_json="["..table.concat(choices,",").."]";parameter_choice_cache[cache_key]=choices_json end
     params[#params+1]='{"index":'..i..',"name":'..json_string(name)..',"value":'..number(reaper.TrackFX_GetParamNormalized(track,selected_fx_index,i))..',"formatted":'..json_string(formatted)..',"step":'..number(step)..',"smallStep":'..number(small_step)..',"largeStep":'..number(large_step)..',"toggle":'..bool(is_toggle)..',"choices":'..choices_json..'}'
   end
   return '{"trackId":'..json_string(selected_track_guid)..',"fxIndex":'..selected_fx_index..',"id":'..json_string(fx_guid)..',"name":'..json_string(fx_name)..',"parameters":['..table.concat(params,",")..']}'
