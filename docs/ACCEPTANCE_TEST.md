@@ -27,8 +27,9 @@ Record pass/fail, REAPER version, macOS/iPadOS versions, plug-in format/vendor, 
 - Toggle iPad Wi-Fi, reload/kill/relaunch PWA, restart Node, then change LAN/IP.
 - Confirm audio never glitches or stops and every recovery shows a fresh REAPER snapshot.
 
-## Optional native streaming experiment
+## Special plug-in native fallback
 
-- Mixer → FX → real floating native GUI → drag knob/fader → Previous/Next FX → Bypass → Back.
+- Mixer → FX → **原生介面** → real floating native GUI → drag knob/fader → **參數模式** → Previous/Next rack → Bypass → Back.
+- Enter native mode before opening the matching REAPER FX window; confirm the iPad keeps waiting and automatically connects immediately after the window appears.
 - Test AU, VST3, resized/Retina windows, analyzer/meter legibility, portrait/landscape transition, and at least two vendor UIs.
 - Confirm no desktop, Dock, Finder, or unrelated window is ever streamed.

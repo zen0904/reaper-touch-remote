@@ -18,7 +18,7 @@ A local-first, live-use iPad control surface for REAPER on macOS. REAPER remains
 - Automatic semantic sections (bands/channels, dynamics, filter/EQ, modulation, time, tone, and I/O), touch-sized switches, native drop-down choices, rotary controls, and filtering of REAPER's synthetic MIDI host controls.
 - One compact parameter page at a time instead of a long scrolling plug-in form, with coalesced animation-frame control writes for smoother touch.
 - A direct-touch six-band graph for Waves F6, a real-time input FFT for the active plug-in, and truthful input/output activity meters for every exposed plug-in.
-- An optional Swift ScreenCaptureKit helper remains available for compatibility experiments, but is no longer the primary Plugin UI.
+- A hybrid fallback for vendor-drawn/special plug-ins: tap **原生介面** to show and control only that plug-in's real REAPER window. It waits until the requested window appears and never falls back to the desktop or an unrelated window.
 
 ## Architecture
 
@@ -72,7 +72,7 @@ The bridge directory defaults to `~/Library/Application Support/REAPER/REAPER To
 ./scripts/start.sh
 ```
 
-This starts the web/state server. Open `http://MAC-IP:47830` on the iPad. The health endpoint is `http://localhost:47830/health`. Native window streaming is optional and can be enabled with `RTR_ENABLE_NATIVE_STREAM=1 ./scripts/start.sh`.
+This starts the web/state server and, when its binary has been built, the idle native-window helper. Open `http://MAC-IP:47830` on the iPad. The health endpoint is `http://localhost:47830/health`. The helper does not ask for or capture anything until **原生介面** is tapped. Disable it explicitly with `RTR_ENABLE_NATIVE_STREAM=0 ./scripts/start.sh`.
 
 The server advertises `_reaper-touch._tcp` with Bonjour. Safari web pages cannot enumerate arbitrary mDNS service records, so a first URL must be entered once. Prefer the Mac's stable Bonjour name (`http://your-mac-name.local:47830`) or the manual IP screen. The PWA remembers it and rediscovers connectivity by retrying; native service browsing would require a signed iPad app.
 
@@ -90,11 +90,12 @@ The control surface disables selection, callouts, context menus, accidental zoom
 
 The first native-stream test requires manual system authorization:
 
-1. Open an FX floating window in REAPER once, then start `./scripts/start.sh`.
+1. Start `./scripts/start.sh`, open a plug-in page on the iPad, then tap **原生介面**.
 2. In **System Settings → Privacy & Security → Screen & System Audio Recording**, enable the Terminal/app launching `reaper-plugin-stream`.
 3. In **Privacy & Security → Accessibility**, enable the same Terminal/app so CGEvent can control the plug-in.
 4. Quit and restart the launcher after permission changes.
-5. Tap an FX slot. You should see only that plug-in window, never the desktop. Drag a control and verify the real plug-in reacts.
+5. The requested FX is floated automatically. If it is not open yet, the iPad remains in waiting mode and connects as soon as that exact REAPER-owned window appears.
+6. You should see only that plug-in window, never the desktop. Drag a control and verify the real plug-in reacts. Tap **參數模式** to return to the multi-touch adaptive UI.
 
 The helper intentionally accepts connections only on loopback; the Node server proxies it to the LAN.
 
@@ -119,7 +120,7 @@ Automated tests cover snapshot/update classification. CI tests Node on Linux and
 - **ADD PLUGIN says the inventory is unavailable:** restart the updated Bridge ReaScript once; it builds the installed plug-in index at startup.
 - **No spectrum yet:** play or monitor audio, open a plug-in from its blue rack slot, and confirm the updated Bridge is running. The input analyzer is active only while a plug-in page is open.
 - **iPad cannot connect:** use the numeric Mac IP, allow incoming Node connections in the macOS firewall, and disable Wi-Fi AP/client isolation.
-- **No plug-in video:** float/open the requested FX, grant Screen Recording, then restart. Some bridged or sandboxed plug-ins may own windows under a different bundle and need matcher work.
+- **No plug-in video:** leave the iPad on the waiting screen, float/open the requested FX, grant Screen Recording, then restart if macOS requests it. The page reconnects automatically when the exact window appears. Some bridged or sandboxed plug-ins may own windows under a different bundle and need matcher work.
 - **Video but no touch:** grant Accessibility and restart the helper.
 - **Hotspot changed IP:** tap the red connection indicator, enter the new IP, and reconnect. State is fully reloaded.
 - **PWA shows stale files:** remove/re-add the Home Screen app or clear Safari website data during development.
@@ -127,8 +128,8 @@ Automated tests cover snapshot/update classification. CI tests Node on Linux and
 ## Known limits / needs real-hardware validation
 
 - Browser-only iPadOS cannot perform general Bonjour service browsing; advertised discovery is useful to native clients, while the PWA uses `.local`, remembered host, manual IP, and retry.
-- The optional native plug-in streaming experiment is deliberately single-pointer because most macOS plug-in GUIs are mouse-based; the primary parameter UI supports independent Pointer Events.
-- FX window matching currently chooses the smallest visible REAPER-owned non-empty window. Bridged plug-ins, vendor helper processes, docked FX, and unusual window ownership need testing and likely per-vendor matching improvements.
+- Native plug-in fallback is deliberately single-pointer because most macOS plug-in GUIs are mouse-based; the primary adaptive parameter UI supports independent Pointer Events.
+- Native fallback requires a title-matched, visible, REAPER-owned window and refuses arbitrary fallbacks. Bridged plug-ins, vendor helper processes, docked FX, and unusual window ownership need testing and may require per-vendor matching rules.
 - MJPEG prioritizes compatibility and latency over bandwidth efficiency. A future VideoToolbox/WebRTC path would reduce bandwidth.
 - Vendor-authored graphics and arbitrary custom layouts cannot be reconstructed from the REAPER parameter API; every exposed parameter remains controllable through the adaptive native iPad layout, with hand-tuned graph profiles available for important plug-ins such as Waves F6.
 - Real REAPER bidirectional changes, project/track/FX mutations, Wi-Fi transitions, iPad PWA relaunch, and 2/3+ finger tests remain acceptance tests.

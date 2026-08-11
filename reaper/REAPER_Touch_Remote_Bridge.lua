@@ -11,6 +11,8 @@ local command_offset = 0
 local last_write = 0
 local selected_track_guid = nil
 local selected_fx_index = nil
+local native_track_guid = nil
+local native_fx_index = nil
 local parameter_choice_cache = {}
 local probe_slots = {}
 local next_probe_slot = 0
@@ -124,6 +126,15 @@ local function remove_probes(except_track) for track_index=0,reaper.CountTracks(
 local function ensure_probe(track,guid,selected_fx) local selected_guid=reaper.TrackFX_GetFXGUID(track,selected_fx);local probe=find_probe(track);if probe<0 then probe=reaper.TrackFX_AddByName(track,"JS: RTR Spectrum Probe",false,-1000-selected_fx);if probe<0 then probe=reaper.TrackFX_AddByName(track,"JS: RTR_Spectrum_Probe",false,-1000-selected_fx) end elseif selected_guid then local current=find_fx_guid(track,selected_guid);if probe~=current-1 then local destination=current-(probe<current and 1 or 0);reaper.TrackFX_CopyToTrack(track,probe,track,math.max(0,destination),true);probe=find_probe(track) end end;if probe>=0 then reaper.TrackFX_SetParam(track,probe,0,probe_slot(guid));reaper.TrackFX_SetEnabled(track,probe,true) end;return selected_guid and find_fx_guid(track,selected_guid) or selected_fx end
 remove_probes()
 
+local function close_native_fx()
+  if native_track_guid and native_fx_index ~= nil then
+    local track=find_track(native_track_guid)
+    if track then reaper.TrackFX_Show(track,native_fx_index,2) end
+  end
+  native_track_guid=nil
+  native_fx_index=nil
+end
+
 local function apply_command(line)
   local id, action, target, value = line:match("^([^\t]*)\t([^\t]*)\t([^\t]*)\t?(.*)$")
   if not action then return end
@@ -137,7 +148,9 @@ local function apply_command(line)
   elseif action == "set_fx_bypass" then local guid,fx=split_target(target); local track=find_track(guid); if track and fx then reaper.TrackFX_SetEnabled(track,fx,tonumber(value)~=1) end
   elseif action == "set_fx_param" then local guid,fx,param=split_param_target(target); local track=find_track(guid); if track and fx and param then reaper.TrackFX_SetParamNormalized(track,fx,param,math.max(0,math.min(1,tonumber(value) or 0))) end
   elseif action == "open_fx" then local guid,fx=split_target(target); local track=find_track(guid); if track and fx then remove_probes(track);local adjusted=ensure_probe(track,guid,fx);selected_track_guid=guid;selected_fx_index=adjusted>=0 and adjusted or fx;reaper.SetOnlyTrackSelected(track) end
-  elseif action == "close_fx" then remove_probes();selected_track_guid=nil;selected_fx_index=nil end
+  elseif action == "open_native_fx" then local guid,fx=split_target(target); local track=find_track(guid); if track and fx then close_native_fx();native_track_guid=guid;native_fx_index=fx;reaper.TrackFX_Show(track,fx,3) end
+  elseif action == "close_native_fx" then close_native_fx()
+  elseif action == "close_fx" then close_native_fx();remove_probes();selected_track_guid=nil;selected_fx_index=nil end
 end
 
 local function read_commands()
@@ -193,5 +206,5 @@ end
 local function loop()
   read_commands(); local now=reaper.time_precise(); if now-last_write>=0.04 then write_state();last_write=now end; reaper.defer(loop)
 end
-reaper.atexit(function() remove_probes();os.remove(state_file) end)
+reaper.atexit(function() close_native_fx();remove_probes();os.remove(state_file) end)
 loop()
