@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#06090e">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/icon-192.svg">
-  <link rel="stylesheet" href="/styles.css?v=15">
+  <link rel="stylesheet" href="/styles.css?v=16">
   <title>REAPER Touch Remote</title>
 </head>
 <body>
@@ -27,10 +27,11 @@
     <section id="empty" class="empty"><h1>Waiting for REAPER</h1><p>Run the bridge ReaScript in REAPER. Audio remains entirely inside REAPER.</p></section>
     <section id="pluginView" class="plugin-view" hidden>
       <nav class="plugin-nav">
-        <button id="pluginBack" class="nav-back">‹ ALL RACKS</button>
-        <div class="rack-pager"><button id="rackPrev" aria-label="Previous rack">‹</button><div><small id="rackPosition">RACK —</small><strong id="pluginTrack"></strong></div><button id="rackNext" aria-label="Next rack">›</button></div>
-        <div class="plugin-identity"><small>ACTIVE PLUGIN</small><span id="pluginName"></span></div>
-        <div class="fx-pager"><button id="pluginPrev">‹ FX</button><button id="pluginNext">FX ›</button></div>
+        <button id="pluginBack" class="nav-back">‹ 控台</button>
+        <button id="rackPrev" class="rack-nav-arrow" aria-label="Previous rack">‹</button>
+        <div class="plugin-identity"><small id="rackPosition">RACK —</small><span id="pluginTrack"></span><strong id="pluginName"></strong></div>
+        <button id="rackNext" class="rack-nav-arrow" aria-label="Next rack">›</button>
+        <div id="pluginLatency" class="plugin-latency connecting"><i></i><span><small>LINK</small><b>— ms</b></span></div>
         <button id="pluginBypass">ACTIVE</button>
       </nav>
       <div class="plugin-workspace"><aside><div class="rack-rail-head"><span>PLUGIN CHAIN</span><b id="rackCount">0 FX</b></div><div id="rackChain" class="rack-chain"></div></aside><div id="pluginSurface" class="plugin-surface"><div id="pluginVisual" class="plugin-visual"></div><div id="parameterTabs" class="parameter-tabs"></div><div id="parameterPanel" class="parameter-panel"><div class="plugin-message">Loading parameters from REAPER…</div></div></div></div>
@@ -43,6 +44,6 @@
     <dialog id="renameRack"><form method="dialog"><h2>RENAME RACK</h2><label>Track name<input id="rackName" maxlength="64" autocomplete="off"></label><menu><button value="cancel">CANCEL</button><button id="saveRackName" value="default">SAVE</button></menu></form></dialog>
     <div id="rotate">Rotate to landscape for the live console layout.</div>
   </main>
-  <script type="module" src="/app.js?v=15"></script>
+  <script type="module" src="/app.js?v=16"></script>
 </body>
 </html>
