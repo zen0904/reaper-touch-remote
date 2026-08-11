@@ -13,11 +13,27 @@ test("first state is a snapshot and meter-only changes are incremental", () => {
   assert.equal(snapshots, 1); assert.equal(updates, 1); assert.equal(manager.snapshot.seq, 2);
 });
 
-test("structural changes produce authoritative snapshot", () => {
+test("live control changes use a lightweight update", () => {
+  const manager = new StateManager(); let snapshots = 0; let update;
+  manager.on("snapshot", () => snapshots++); manager.on("update", (value) => { update = value; });
+  manager.ingest(sample()); const changed = sample(); changed.tracks[0].mute = true; manager.ingest(changed);
+  assert.equal(snapshots, 1); assert.deepEqual(update.changes.tracks, [{ id: "{A}", mute: true }]);
+});
+
+test("track and plug-in topology changes still produce authoritative snapshots", () => {
   const manager = new StateManager(); let snapshots = 0;
   manager.on("snapshot", () => snapshots++);
-  manager.ingest(sample()); const changed = sample(); changed.tracks[0].mute = true; manager.ingest(changed);
+  manager.ingest(sample()); const changed = sample(); changed.tracks[0].fx.push({ id: "fx-1", index: 0, name: "EQ", enabled: true }); manager.ingest(changed);
   assert.equal(snapshots, 2);
+});
+
+test("moving a plug-in parameter emits only the changed parameter", () => {
+  const manager = new StateManager(); let update;
+  manager.on("update", (value) => { update = value; });
+  const first = { ...sample(), selectedFx: { trackId: "{A}", fxIndex: 0, id: "fx-1", name: "EQ", parameters: [{ index: 0, name: "Gain", value: 0.5, formatted: "0 dB", step: 0 }] } };
+  manager.ingest(first);
+  manager.ingest({ ...first, selectedFx: { ...first.selectedFx, parameters: [{ ...first.selectedFx.parameters[0], value: 0.51, formatted: "0.2 dB" }] } });
+  assert.deepEqual(update.changes.selectedFx.parameters, [{ index: 0, value: 0.51, formatted: "0.2 dB" }]);
 });
 
 test("bridge clock changes do not rebuild the control surface", () => {
