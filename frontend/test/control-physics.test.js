@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { eqPinchQValue, eqPointerValue, rotaryDragValue, smoothSpectrumFrame } from "../control-physics.js";
+import { dynamicBandGainDb, eqPinchQValue, eqPointerValue, rotaryDragValue, smoothSpectrumFrame, spectrumTransferDb } from "../control-physics.js";
 
 test("rotary drag keeps small touch movements precise and accelerates long throws", () => {
   assert.ok(rotaryDragValue(0.5, 10, "touch") < 0.52);
@@ -29,4 +29,15 @@ test("spectrum smoothing attacks faster than it releases", () => {
   const [attack, release] = smoothSpectrumFrame([0.2, 0.8], [1, 0]);
   assert.ok(Math.abs(attack - 0.664) < 1e-9);
   assert.ok(Math.abs(release - 0.64) < 1e-9);
+});
+
+test("pre/post spectra expose truthful transfer and dynamic compression", () => {
+  const input = [0.7, 0.8, 0.7]; const output = [0.63, 0.73, 0.63];
+  assert.ok(Math.abs(spectrumTransferDb(input, output, 1) + 7) < 0.001);
+  assert.ok(Math.abs(dynamicBandGainDb(input, output, 1, -2, -6) + 5) < 0.001);
+});
+
+test("dynamic activity stays idle without signal or configured range", () => {
+  assert.equal(dynamicBandGainDb([0.05], [0.01], 0, 0, -12), 0);
+  assert.equal(dynamicBandGainDb([0.8], [0.7], 0, 0, 0), 0);
 });

@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#06090e">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/icon-192.svg">
-  <link rel="stylesheet" href="/styles.css?v=19">
+  <link rel="stylesheet" href="/styles.css?v=22">
   <title>REAPER Touch Remote</title>
 </head>
 <body>
@@ -34,6 +34,14 @@
         <div id="pluginLatency" class="plugin-latency connecting"><i></i><span><small>LINK</small><b>— ms</b></span></div>
         <button id="pluginBypass">ACTIVE</button>
       </nav>
+      <div class="plugin-presetbar" aria-label="Plug-in preset controls">
+        <span class="preset-label">PRESET</span>
+        <button id="presetPrev" aria-label="Previous preset">‹</button>
+        <select id="pluginPreset" aria-label="Plug-in preset"></select>
+        <button id="presetNext" aria-label="Next preset">›</button>
+        <button id="presetReset" class="preset-reset" title="Recall the plug-in factory default">FLAT / RESET</button>
+        <span id="presetPosition" class="preset-position">—</span>
+      </div>
       <div class="plugin-workspace"><aside><div class="rack-rail-head"><span>PLUGIN CHAIN</span><b id="rackCount">0 FX</b></div><div id="rackChain" class="rack-chain"></div></aside><div id="pluginSurface" class="plugin-surface"><div id="pluginVisual" class="plugin-visual"></div><div id="parameterTabs" class="parameter-tabs"></div><div id="parameterPanel" class="parameter-panel"><div class="plugin-message">Loading parameters from REAPER…</div></div></div></div>
       <div id="touchFeedback" class="touch-feedback" aria-live="polite"></div>
     </section>
@@ -44,6 +52,6 @@
     <dialog id="renameRack"><form method="dialog"><h2>RENAME RACK</h2><label>Track name<input id="rackName" maxlength="64" autocomplete="off"></label><menu><button value="cancel">CANCEL</button><button id="saveRackName" value="default">SAVE</button></menu></form></dialog>
     <div id="rotate">Rotate to landscape for the live console layout.</div>
   </main>
-  <script type="module" src="/app.js?v=19"></script>
+  <script type="module" src="/app.js?v=22"></script>
 </body>
 </html>

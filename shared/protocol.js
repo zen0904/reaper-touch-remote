@@ -18,7 +18,7 @@ export const ServerType = Object.freeze({
 });
 
 export const ALLOWED_COMMANDS = new Set([
-  "set_track_volume", "set_track_pan", "set_track_mute", "set_track_solo",
+  "set_track_volume", "set_track_pan", "set_track_mute", "set_track_solo", "set_track_fx_bypass",
   "select_track", "rename_track", "add_fx", "set_fx_bypass", "set_fx_param", "open_fx", "close_fx",
-  "open_native_fx", "close_native_fx"
+  "open_native_fx", "close_native_fx", "navigate_fx_preset", "set_fx_preset", "reset_fx_factory"
 ]);

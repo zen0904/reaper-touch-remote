@@ -20,6 +20,14 @@ test("live control changes use a lightweight update", () => {
   assert.equal(snapshots, 1); assert.deepEqual(update.changes.tracks, [{ id: "{A}", mute: true }]);
 });
 
+test("whole track FX-chain bypass is synchronized independently of individual FX", () => {
+  const manager = new StateManager(); let update;
+  manager.on("update", (value) => { update = value; });
+  const first = sample(); first.tracks[0].fxEnabled = true; manager.ingest(first);
+  const changed = sample(); changed.tracks[0].fxEnabled = false; manager.ingest(changed);
+  assert.deepEqual(update.changes.tracks, [{ id: "{A}", fxEnabled: false }]);
+});
+
 test("track and plug-in topology changes still produce authoritative snapshots", () => {
   const manager = new StateManager(); let snapshots = 0;
   manager.on("snapshot", () => snapshots++);
@@ -36,6 +44,16 @@ test("moving a plug-in parameter emits only the changed parameter", () => {
   assert.deepEqual(update.changes.selectedFx.parameters, [{ index: 0, value: 0.51, formatted: "0.2 dB" }]);
 });
 
+test("preset recalls update the open plug-in without rebuilding its surface", () => {
+  const manager = new StateManager(); let snapshots = 0; let update;
+  manager.on("snapshot", () => snapshots++); manager.on("update", (value) => { update = value; });
+  const first = { ...sample(), selectedFx: { trackId: "{A}", fxIndex: 0, id: "fx-1", name: "EQ", preset: { name: "Full Reset", index: 0, count: 12 }, parameters: [] } };
+  manager.ingest(first);
+  manager.ingest({ ...first, selectedFx: { ...first.selectedFx, preset: { name: "Vocal Clean", index: 3, count: 12 } } });
+  assert.equal(snapshots, 1);
+  assert.deepEqual(update.changes.selectedFx.preset, { name: "Vocal Clean", index: 3, count: 12 });
+});
+
 test("bridge clock changes do not rebuild the control surface", () => {
   const manager = new StateManager(); let snapshots = 0; let updates = 0;
   manager.on("snapshot", () => snapshots++); manager.on("update", () => updates++);
@@ -50,4 +68,11 @@ test("real-time spectrum changes stay on the lightweight update path", () => {
   manager.ingest({ ...sample(), tracks: [{ ...sample().tracks[0], signal: { seq: 1, left: 0.2, right: 0.3, spectrum: [0.1, 0.2], input: { spectrum: [0.1, 0.2] }, output: { spectrum: [0.08, 0.15] } } }] });
   manager.ingest({ ...sample(), tracks: [{ ...sample().tracks[0], meter: [-12, -11], signal: { seq: 2, left: 0.6, right: 0.5, spectrum: [0.4, 0.8], input: { spectrum: [0.4, 0.8] }, output: { spectrum: [0.3, 0.65] } } }] });
   assert.equal(snapshots, 1); assert.equal(updates, 1); assert.deepEqual(latest.changes.meters[0].signal.input.spectrum, [0.4, 0.8]); assert.deepEqual(latest.changes.meters[0].signal.output.spectrum, [0.3, 0.65]);
+});
+
+test("clearing stale bridge state makes the next update authoritative", () => {
+  const manager = new StateManager(); let snapshots = 0;
+  manager.on("snapshot", () => snapshots++);
+  manager.ingest(sample()); manager.clear(); manager.ingest(sample([-8, -7]));
+  assert.equal(snapshots, 2);
 });

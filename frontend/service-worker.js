@@ -1,1 +1,16 @@
-const CACHE="rtr-v19";const ASSETS=["/","/styles.css?v=19","/app.js?v=19","/control-physics.js","/rack-navigation.js","/plugin-profiles.js","/native-pointer.js","/manifest.webmanifest","/icons/icon-192.svg","/icons/icon-512.svg"];self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS))));self.addEventListener("activate",e=>e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key))))])));self.addEventListener("fetch",e=>{if(e.request.url.includes("/ws")||e.request.url.includes("/capture/")||e.request.url.includes("/api/"))return;e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request)))})
+const CACHE="rtr-v22";
+const ASSETS=["/","/styles.css?v=22","/app.js?v=22","/control-physics.js","/rack-navigation.js","/plugin-profiles.js","/native-pointer.js","/manifest.webmanifest","/icons/icon-192.svg","/icons/icon-512.svg"];
+
+self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS))));
+self.addEventListener("activate",event=>event.waitUntil(Promise.all([
+  self.clients.claim(),
+  caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key))))
+])));
+self.addEventListener("fetch",event=>{
+  if(event.request.url.includes("/ws")||event.request.url.includes("/capture/")||event.request.url.includes("/api/"))return;
+  event.respondWith(fetch(event.request).then(response=>{
+    const copy=response.clone();
+    caches.open(CACHE).then(cache=>cache.put(event.request,copy));
+    return response;
+  }).catch(()=>caches.match(event.request)));
+});

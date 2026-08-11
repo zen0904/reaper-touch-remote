@@ -42,3 +42,33 @@ export function smoothSpectrumFrame(previous = [], next = [], attack = 0.58, rel
     return before + (value - before) * amount;
   });
 }
+
+export function spectrumTransferDb(input = [], output = [], index = 0, radius = 1) {
+  if (!input.length || !output.length) return 0;
+  const center = Math.max(0, Math.min(Math.min(input.length, output.length) - 1, Math.round(index)));
+  let inputSum = 0; let outputSum = 0; let count = 0;
+  for (let offset = -radius; offset <= radius; offset++) {
+    const bin = center + offset;
+    if (bin < 0 || bin >= input.length || bin >= output.length) continue;
+    inputSum += clamp01(input[bin]); outputSum += clamp01(output[bin]); count++;
+  }
+  return count ? ((outputSum - inputSum) / count) * 100 : 0;
+}
+
+// The probes report normalized -100..0 dB FFT bins before and after the FX.
+// Removing the static curve leaves the actual live dynamics contribution.
+export function dynamicBandGainDb(input = [], output = [], index = 0, staticDb = 0, rangeDb = 0, minimumInput = 0.18) {
+  if (!input.length || !output.length || Math.abs(rangeDb) < 0.05) return 0;
+  const center = Math.max(0, Math.min(input.length - 1, Math.round(index)));
+  let level = 0; let count = 0;
+  for (let offset = -1; offset <= 1; offset++) {
+    const bin = center + offset;
+    if (bin < 0 || bin >= input.length) continue;
+    level += clamp01(input[bin]); count++;
+  }
+  if (!count || level / count < minimumInput) return 0;
+  const residual = spectrumTransferDb(input, output, center) - Number(staticDb || 0);
+  return rangeDb > 0
+    ? Math.max(0, Math.min(rangeDb, residual))
+    : Math.min(0, Math.max(rangeDb, residual));
+}

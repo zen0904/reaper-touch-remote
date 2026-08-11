@@ -8,6 +8,7 @@ A local-first, live-use iPad control surface for REAPER on macOS. REAPER remains
 
 - Real REAPER track order, names, volume, pan, mute, solo, selection, peak meters, FX order/names/enabled state via ReaScript—no mock tracks or fake meters.
 - Authoritative full snapshots and incremental meter updates over WebSocket; reconnect always requests a new snapshot.
+- Bridge freshness is checked independently from the WebSocket heartbeat: a stopped/stale ReaScript shows **BRIDGE WAITING** instead of a false green REAPER status. On macOS the server can automatically relaunch the registered Bridge action while REAPER is running.
 - Commands for track mute, solo, selection/name, FX insertion/bypass, plug-in parameters, and plug-in page open/close. Other connected clients see the resulting REAPER state.
 - Independent Pointer Events ownership, capture, cancel, and lost-capture handling for simultaneous plug-in controls.
 - iPad landscape console UI with explicit track banks, touch-sized controls, page lock, safe areas, wake lock, manual host profiles, and installable PWA metadata/cache.
@@ -73,7 +74,11 @@ The bridge directory defaults to `~/Library/Application Support/REAPER/REAPER To
 ./scripts/start.sh
 ```
 
-This starts the web/state server and, when its binary has been built, the idle native-window helper. Open `http://MAC-IP:47830` on the iPad. The health endpoint is `http://localhost:47830/health`. The helper does not ask for or capture anything until **原生介面** is tapped. Disable it explicitly with `RTR_ENABLE_NATIVE_STREAM=0 ./scripts/start.sh`.
+This starts the web/state server. Open `http://MAC-IP:47830` on the iPad. The health endpoint is `http://localhost:47830/health`. The native-window helper starts lazily only after **原生介面** or a vendor-only preset browser is requested; before that it consumes no process or memory. Disable it explicitly with `RTR_ENABLE_NATIVE_STREAM=0 ./scripts/start.sh`.
+
+On the installed macOS setup, REAPER's `Scripts/__startup.lua` starts the user LaunchAgent invisibly and keeps the deferred Bridge action alive from inside REAPER. The service follows REAPER's lifecycle: it starts when REAPER opens, restarts after an unexpected service crash, and exits a few seconds after REAPER closes. No Terminal window, AppleScript UI automation, or Accessibility permission is required for routine startup and recovery.
+
+Every plug-in page has host preset previous/next/recall plus **FLAT / RESET**. Preset names exposed through REAPER are recalled directly; vendor-private preset browsers fall back to the plug-in's streamed native interface because VST/AU does not provide a universal factory-preset enumeration API. The rack has two independent bypass layers: each slot's **IN/OUT** and the rack header's whole-track **FX ON/BYP** switch.
 
 The server advertises `_reaper-touch._tcp` with Bonjour. Safari web pages cannot enumerate arbitrary mDNS service records, so a first URL must be entered once. Prefer the Mac's stable Bonjour name (`http://your-mac-name.local:47830`) or the manual IP screen. The PWA remembers it and rediscovers connectivity by retrying; native service browsing would require a signed iPad app.
 
@@ -118,8 +123,9 @@ Automated tests cover snapshot/update classification. CI tests Node on Linux and
 ## Troubleshooting
 
 - **Waiting for REAPER:** confirm the ReaScript is running and the bridge paths printed by Node and returned by `reaper.GetResourcePath()` match.
+- **Green server but no REAPER data:** current builds distinguish the two connections. **BRIDGE WAITING** means the web server is reachable but the ReaScript is not producing fresh state; the macOS watchdog retries the registered action automatically. Set `RTR_AUTO_RECOVER_BRIDGE=0` only when manual Bridge control is preferred.
 - **ADD PLUGIN says the inventory is unavailable:** restart the updated Bridge ReaScript once; it builds the installed plug-in index at startup.
-- **No spectrum yet:** play or monitor audio, open a plug-in from its blue rack slot, and confirm the updated Bridge is running. Input/output analysis is active only while a plug-in page is open.
+- **No spectrum yet:** play or monitor audio through that REAPER track, open a plug-in from its blue rack slot, and confirm the updated Bridge is running. Audio from Safari, YouTube, or another macOS app is not REAPER track input. Input/output analysis is active only while a plug-in page is open.
 - **iPad cannot connect:** use the numeric Mac IP, allow incoming Node connections in the macOS firewall, and disable Wi-Fi AP/client isolation.
 - **No plug-in video:** leave the iPad on the waiting screen, float/open the requested FX, grant Screen Recording, then restart if macOS requests it. The page reconnects automatically when the exact window appears. Some bridged or sandboxed plug-ins may own windows under a different bundle and need matcher work.
 - **Video but no touch:** grant Accessibility and restart the helper.

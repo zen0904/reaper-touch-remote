@@ -22,7 +22,7 @@ function realtimeChanges(previous, next) {
     const before = previous.tracks.find((candidate) => candidate.id === track.id);
     if (!before) continue;
     const changed = { id: track.id };
-    for (const key of ["volume", "pan", "mute", "solo", "selected"]) {
+    for (const key of ["volume", "pan", "mute", "solo", "fxEnabled", "selected"]) {
       if (track[key] !== before[key]) changed[key] = track[key];
     }
     const fx = track.fx.flatMap((item) => {
@@ -42,7 +42,8 @@ function realtimeChanges(previous, next) {
       return old && old.value === param.value && old.formatted === param.formatted
         ? [] : [{ index: param.index, value: param.value, formatted: param.formatted }];
     });
-    if (parameters.length) selectedFx = { id: nextFx.id, trackId: nextFx.trackId, fxIndex: nextFx.fxIndex, parameters };
+    const presetChanged = JSON.stringify(beforeFx.preset || null) !== JSON.stringify(nextFx.preset || null);
+    if (parameters.length || presetChanged) selectedFx = { id: nextFx.id, trackId: nextFx.trackId, fxIndex: nextFx.fxIndex, ...(presetChanged ? { preset: nextFx.preset } : {}), parameters };
   }
   return { meters, tracks, ...(selectedFx ? { selectedFx } : {}) };
 }
@@ -53,6 +54,11 @@ export class StateManager extends EventEmitter {
   #structural = "";
 
   get snapshot() { return this.#state && { seq: this.#seq, state: this.#state }; }
+
+  clear() {
+    this.#state = null;
+    this.#structural = "";
+  }
 
   ingest(next) {
     if (!next || !Array.isArray(next.tracks) || typeof next.project !== "object") return false;

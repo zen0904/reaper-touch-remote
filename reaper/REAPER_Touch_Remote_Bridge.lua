@@ -9,6 +9,7 @@ local command_file = bridge_dir .. sep .. "commands.tsv"
 local installed_fx_file = bridge_dir .. sep .. "installed-fx.json"
 local command_offset = 0
 local last_write = 0
+local last_heartbeat = 0
 local selected_track_guid = nil
 local selected_fx_index = nil
 local native_track_guid = nil
@@ -163,11 +164,15 @@ local function apply_command(line)
   elseif action == "set_track_pan" then local track=find_track(target); if track then reaper.CSurf_OnPanChange(track, tonumber(value) or 0, false) end
   elseif action == "set_track_mute" then local track=find_track(target); if track then reaper.SetMediaTrackInfo_Value(track,"B_MUTE",tonumber(value)==1 and 1 or 0) end
   elseif action == "set_track_solo" then local track=find_track(target); if track then reaper.SetMediaTrackInfo_Value(track,"I_SOLO",tonumber(value)==1 and 2 or 0) end
+  elseif action == "set_track_fx_bypass" then local track=find_track(target); if track then reaper.SetMediaTrackInfo_Value(track,"I_FXEN",tonumber(value)==1 and 0 or 1) end
   elseif action == "select_track" then local track=find_track(target); if track then reaper.SetOnlyTrackSelected(track); reaper.Main_OnCommand(40913,0) end
   elseif action == "rename_track" then local track=find_track(target); if track and value~="" then reaper.GetSetMediaTrackInfo_String(track,"P_NAME",value,true) end
   elseif action == "add_fx" then local track=find_track(target); if track and value~="" then local fx=reaper.TrackFX_AddByName(track,value,false,-1);if fx>=0 then selected_track_guid=target;selected_fx_index=fx;reaper.SetOnlyTrackSelected(track);reaper.TrackList_AdjustWindows(false);reaper.UpdateArrange() end end
   elseif action == "set_fx_bypass" then local guid,fx=split_target(target); local track=find_track(guid); if track and fx then reaper.TrackFX_SetEnabled(track,fx,tonumber(value)~=1) end
   elseif action == "set_fx_param" then local guid,fx,param=split_param_target(target); local track=find_track(guid); if track and fx and param then reaper.TrackFX_SetParamNormalized(track,fx,param,math.max(0,math.min(1,tonumber(value) or 0))) end
+  elseif action == "navigate_fx_preset" then local guid,fx=split_target(target); local track=find_track(guid); if track and fx then reaper.TrackFX_NavigatePresets(track,fx,(tonumber(value) or 0)<0 and -1 or 1) end
+  elseif action == "set_fx_preset" then local guid,fx=split_target(target); local track=find_track(guid); if track and fx then reaper.TrackFX_SetPresetByIndex(track,fx,math.floor(tonumber(value) or 0)) end
+  elseif action == "reset_fx_factory" then local guid,fx=split_target(target); local track=find_track(guid); if track and fx then reaper.TrackFX_SetPresetByIndex(track,fx,-2) end
   elseif action == "open_fx" then local guid,fx=split_target(target); local track=find_track(guid); if track and fx then remove_probes(track);local adjusted=ensure_probe(track,guid,fx);selected_track_guid=guid;selected_fx_index=adjusted>=0 and adjusted or fx;reaper.SetOnlyTrackSelected(track) end
   elseif action == "open_native_fx" then local guid,fx=split_target(target); local track=find_track(guid); if track and fx then close_native_fx();native_track_guid=guid;native_fx_index=fx;reaper.TrackFX_Show(track,fx,3) end
   elseif action == "close_native_fx" then close_native_fx()
@@ -206,7 +211,7 @@ local function track_json(track,index)
   local left=reaper.Track_GetPeakInfo(track,0); local right=reaper.Track_GetPeakInfo(track,1)
   local left_db=left>0 and 20*math.log(left,10) or -100; local right_db=right>0 and 20*math.log(right,10) or -100
   local guid=reaper.GetTrackGUID(track)
-  return '{"id":'..json_string(guid)..',"number":'..(index+1)..',"name":'..json_string(name)..',"volume":'..number(reaper.GetMediaTrackInfo_Value(track,"D_VOL"))..',"pan":'..number(reaper.GetMediaTrackInfo_Value(track,"D_PAN"))..',"mute":'..bool(reaper.GetMediaTrackInfo_Value(track,"B_MUTE")>0.5)..',"solo":'..bool(reaper.GetMediaTrackInfo_Value(track,"I_SOLO")>0)..',"selected":'..bool(reaper.IsTrackSelected(track))..',"meter":['..number(left_db)..','..number(right_db)..'],"signal":'..signal_json(guid)..',"fx":'..fx_json(track)..'}'
+  return '{"id":'..json_string(guid)..',"number":'..(index+1)..',"name":'..json_string(name)..',"volume":'..number(reaper.GetMediaTrackInfo_Value(track,"D_VOL"))..',"pan":'..number(reaper.GetMediaTrackInfo_Value(track,"D_PAN"))..',"mute":'..bool(reaper.GetMediaTrackInfo_Value(track,"B_MUTE")>0.5)..',"solo":'..bool(reaper.GetMediaTrackInfo_Value(track,"I_SOLO")>0)..',"fxEnabled":'..bool(reaper.GetMediaTrackInfo_Value(track,"I_FXEN")~=0)..',"selected":'..bool(reaper.IsTrackSelected(track))..',"meter":['..number(left_db)..','..number(right_db)..'],"signal":'..signal_json(guid)..',"fx":'..fx_json(track)..'}'
 end
 local function selected_fx_json()
   if not selected_track_guid or selected_fx_index == nil then return "null" end
@@ -214,6 +219,9 @@ local function selected_fx_json()
   if not track or selected_fx_index >= reaper.TrackFX_GetCount(track) then return "null" end
   local _,fx_name=reaper.TrackFX_GetFXName(track,selected_fx_index,"")
   local fx_guid=reaper.TrackFX_GetFXGUID(track,selected_fx_index) or selected_track_guid.."|"..selected_fx_index
+  local preset_name="";local preset_index=-1;local preset_count=0
+  if reaper.TrackFX_GetPreset then local ok,retval,name=pcall(reaper.TrackFX_GetPreset,track,selected_fx_index,"");if ok and retval then preset_name=name or "" end end
+  if reaper.TrackFX_GetPresetIndex then local ok,index,count=pcall(reaper.TrackFX_GetPresetIndex,track,selected_fx_index);if ok then preset_index=tonumber(index) or -1;preset_count=tonumber(count) or 0 end end
   local params={}
   for i=0,reaper.TrackFX_GetNumParams(track,selected_fx_index)-1 do
     local _,name=reaper.TrackFX_GetParamName(track,selected_fx_index,i,"")
@@ -226,7 +234,7 @@ local function selected_fx_json()
     if not choices_json then local choices={};local choice_count=step and step>0 and math.floor(1/step+0.5) or 0;if not is_toggle and choice_count>=2 and choice_count<=32 then for choice=0,choice_count do local value=math.min(1,choice*step);local label=format_param_normalized(track,selected_fx_index,i,value);choices[#choices+1]='{"value":'..number(value)..',"label":'..json_string(label~="" and label or math.floor(value*100+0.5).."%")..'}' end end;choices_json="["..table.concat(choices,",").."]";parameter_choice_cache[cache_key]=choices_json end
     params[#params+1]='{"index":'..i..',"name":'..json_string(name)..',"value":'..number(reaper.TrackFX_GetParamNormalized(track,selected_fx_index,i))..',"formatted":'..json_string(formatted)..',"step":'..number(step)..',"smallStep":'..number(small_step)..',"largeStep":'..number(large_step)..',"toggle":'..bool(is_toggle)..',"choices":'..choices_json..'}'
   end
-  return '{"trackId":'..json_string(selected_track_guid)..',"fxIndex":'..selected_fx_index..',"id":'..json_string(fx_guid)..',"name":'..json_string(fx_name)..',"parameters":['..table.concat(params,",")..']}'
+  return '{"trackId":'..json_string(selected_track_guid)..',"fxIndex":'..selected_fx_index..',"id":'..json_string(fx_guid)..',"name":'..json_string(fx_name)..',"preset":{"name":'..json_string(preset_name)..',"index":'..number(preset_index)..',"count":'..number(preset_count)..'},"parameters":['..table.concat(params,",")..']}'
 end
 local function write_state()
   local _,project_path=reaper.EnumProjects(-1,""); local name=project_path:match("([^/\\]+)%.rpp$") or "Untitled"
@@ -235,7 +243,7 @@ local function write_state()
   local file=io.open(temp_file,"w"); if not file then return end; file:write(payload); file:flush(); file:close(); os.rename(temp_file,state_file)
 end
 local function loop()
-  read_commands(); local now=reaper.time_precise(); if now-last_write>=0.04 then write_state();last_write=now end; reaper.defer(loop)
+  read_commands(); local now=reaper.time_precise();if now-last_heartbeat>=0.5 then reaper.SetExtState("REAPER_TOUCH_REMOTE","bridge_heartbeat",tostring(now),false);last_heartbeat=now end;if now-last_write>=0.04 then write_state();last_write=now end; reaper.defer(loop)
 end
-reaper.atexit(function() close_native_fx();remove_probes();os.remove(state_file) end)
+reaper.atexit(function() reaper.DeleteExtState("REAPER_TOUCH_REMOTE","bridge_heartbeat",false);close_native_fx();remove_probes();os.remove(state_file) end)
 loop()
