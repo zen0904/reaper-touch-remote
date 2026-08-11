@@ -18,8 +18,9 @@ Record pass/fail, REAPER version, macOS/iPadOS versions, plug-in format/vendor, 
 
 ## Adaptive plug-in UI and analyzer
 
-- At 1024×768 landscape, open F6 and several high-parameter-count plug-ins; confirm only the active semantic group is shown and the plug-in page itself does not scroll.
-- Verify the active input spectrum responds to a sine sweep and silence, and the IN/OUT activity meters follow real signal rather than decorative animation.
+- At 1024×768 landscape, open F6; confirm the graph fills the work area and the parameter controls stay hidden until **細節參數** is opened.
+- Drag an EQ node horizontally/vertically for frequency/gain, pinch the same node with a second finger for Q, then drag two separate bands simultaneously. Confirm REAPER-formatted Hz/dB/Q feedback and no page movement.
+- Verify both pre- and post-plug-in spectra respond to a sine sweep, EQ changes, and silence, and the IN/OUT activity meters follow real signal rather than decorative animation.
 - Move the analyzer between plug-ins on the same rack and verify the chosen plug-in remains selected despite internal FX index changes.
 
 ## Recovery/network

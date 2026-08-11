@@ -40,6 +40,7 @@ end
 
 local probe_source=[=[desc:RTR Spectrum Probe
 slider1:0<0,255,1>Probe slot
+slider2:0<0,1,1>Probe stage
 options:gmem=RTR_SPECTRUM
 
 @init
@@ -49,7 +50,7 @@ peak_l=0;
 peak_r=0;
 
 @slider
-gbase=floor(slider1)*80;
+gbase=floor(slider1)*160+floor(slider2)*80;
 
 @sample
 peak_l=max(peak_l,abs(spl0));
@@ -123,7 +124,27 @@ local function probe_slot(guid) if probe_slots[guid]==nil then probe_slots[guid]
 local function find_probe(track) for i=0,reaper.TrackFX_GetCount(track)-1 do local _,name=reaper.TrackFX_GetFXName(track,i,"");if name:find("RTR Spectrum Probe",1,true) then return i end end return -1 end
 local function find_fx_guid(track,guid) for i=0,reaper.TrackFX_GetCount(track)-1 do if reaper.TrackFX_GetFXGUID(track,i)==guid then return i end end return -1 end
 local function remove_probes(except_track) for track_index=0,reaper.CountTracks(0)-1 do local track=reaper.GetTrack(0,track_index);if track~=except_track then local probe=find_probe(track);while probe>=0 do reaper.TrackFX_Delete(track,probe);probe=find_probe(track) end end end end
-local function ensure_probe(track,guid,selected_fx) local selected_guid=reaper.TrackFX_GetFXGUID(track,selected_fx);local probe=find_probe(track);if probe<0 then probe=reaper.TrackFX_AddByName(track,"JS: RTR Spectrum Probe",false,-1000-selected_fx);if probe<0 then probe=reaper.TrackFX_AddByName(track,"JS: RTR_Spectrum_Probe",false,-1000-selected_fx) end elseif selected_guid then local current=find_fx_guid(track,selected_guid);if probe~=current-1 then local destination=current-(probe<current and 1 or 0);reaper.TrackFX_CopyToTrack(track,probe,track,math.max(0,destination),true);probe=find_probe(track) end end;if probe>=0 then reaper.TrackFX_SetParam(track,probe,0,probe_slot(guid));reaper.TrackFX_SetEnabled(track,probe,true) end;return selected_guid and find_fx_guid(track,selected_guid) or selected_fx end
+local function add_probe(track,position)
+  local probe=reaper.TrackFX_AddByName(track,"JS: RTR Spectrum Probe",false,-1000-position)
+  if probe<0 then probe=reaper.TrackFX_AddByName(track,"JS: RTR_Spectrum_Probe",false,-1000-position) end
+  return probe
+end
+local function ensure_probe(track,guid,selected_fx)
+  local selected_guid=reaper.TrackFX_GetFXGUID(track,selected_fx)
+  if not selected_guid then return selected_fx end
+  local existing=find_probe(track)
+  while existing>=0 do reaper.TrackFX_Delete(track,existing);existing=find_probe(track) end
+  local current=find_fx_guid(track,selected_guid)
+  if current<0 then return selected_fx end
+  local input_probe=add_probe(track,current)
+  current=find_fx_guid(track,selected_guid)
+  local output_probe=current>=0 and add_probe(track,current+1) or -1
+  current=find_fx_guid(track,selected_guid)
+  local slot=probe_slot(guid)
+  if input_probe>=0 then reaper.TrackFX_SetParam(track,input_probe,0,slot);reaper.TrackFX_SetParam(track,input_probe,1,0);reaper.TrackFX_SetEnabled(track,input_probe,true) end
+  if output_probe>=0 then reaper.TrackFX_SetParam(track,output_probe,0,slot);reaper.TrackFX_SetParam(track,output_probe,1,1);reaper.TrackFX_SetEnabled(track,output_probe,true) end
+  return current>=0 and current or selected_fx
+end
 remove_probes()
 
 local function close_native_fx()
@@ -169,7 +190,17 @@ local function fx_json(track)
   end
   return "["..table.concat(values,",").."]"
 end
-local function signal_json(guid) if guid~=selected_track_guid then return "null" end;local base=probe_slot(guid)*80;local bins={};for i=0,63 do bins[#bins+1]=number(reaper.gmem_read(base+4+i)) end;return '{"seq":'..number(reaper.gmem_read(base))..',"left":'..number(reaper.gmem_read(base+1))..',"right":'..number(reaper.gmem_read(base+2))..',"sampleRate":'..number(reaper.gmem_read(base+3))..',"spectrum":['..table.concat(bins,",")..']}' end
+local function signal_stage_json(slot,stage)
+  local base=slot*160+stage*80;local bins={}
+  for i=0,63 do bins[#bins+1]=number(reaper.gmem_read(base+4+i)) end
+  return '{"seq":'..number(reaper.gmem_read(base))..',"left":'..number(reaper.gmem_read(base+1))..',"right":'..number(reaper.gmem_read(base+2))..',"sampleRate":'..number(reaper.gmem_read(base+3))..',"spectrum":['..table.concat(bins,",")..']}'
+end
+local function signal_json(guid)
+  if guid~=selected_track_guid then return "null" end
+  local slot=probe_slot(guid);local input=signal_stage_json(slot,0);local output=signal_stage_json(slot,1);local base=slot*160
+  local bins={};for i=0,63 do bins[#bins+1]=number(reaper.gmem_read(base+4+i)) end
+  return '{"seq":'..number(reaper.gmem_read(base))..',"left":'..number(reaper.gmem_read(base+1))..',"right":'..number(reaper.gmem_read(base+2))..',"sampleRate":'..number(reaper.gmem_read(base+3))..',"spectrum":['..table.concat(bins,",")..'],"input":'..input..',"output":'..output..'}'
+end
 local function track_json(track,index)
   local _,name=reaper.GetTrackName(track)
   local left=reaper.Track_GetPeakInfo(track,0); local right=reaper.Track_GetPeakInfo(track,1)

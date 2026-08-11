@@ -23,3 +23,11 @@ export function eqPointerValue(clientX, clientY, rect, geometry) {
     gain: 1 - (y - geometry.insetY) / (geometry.height - geometry.insetY * 2)
   };
 }
+
+// Pinching outward widens the band (lower Q); pinching inward narrows it
+// (higher Q). A logarithmic ratio feels consistent at different hand sizes.
+export function eqPinchQValue(originValue, originDistance, currentDistance) {
+  const start = Math.max(12, Number(originDistance) || 12);
+  const current = Math.max(12, Number(currentDistance) || 12);
+  return clamp01(originValue - Math.log2(current / start) * 0.42);
+}

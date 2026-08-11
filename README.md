@@ -17,7 +17,8 @@ A local-first, live-use iPad control surface for REAPER on macOS. REAPER remains
 - Search and add any installed REAPER plug-in directly from the iPad, and rename a rack/REAPER track from the rack header.
 - Automatic semantic sections (bands/channels, dynamics, filter/EQ, modulation, time, tone, and I/O), touch-sized switches, native drop-down choices, rotary controls, and filtering of REAPER's synthetic MIDI host controls.
 - One compact parameter page at a time instead of a long scrolling plug-in form, with coalesced animation-frame control writes for smoother touch.
-- A direct-touch six-band graph for Waves F6, a real-time input FFT for the active plug-in, and truthful input/output activity meters for every exposed plug-in.
+- A full-height direct-touch EQ surface for Waves F6 and other identifiable band EQs: one finger moves frequency/gain, a second finger pinches Q, multiple bands can move independently, and the active node shows REAPER-formatted Hz/dB/Q values.
+- Real-time pre- and post-plug-in FFT overlays plus truthful input/output activity meters. Exposed plug-in parameters continuously reconcile from REAPER; vendor-private animation that REAPER cannot expose remains available through the exact native-window fallback.
 - A hybrid fallback for vendor-drawn/special plug-ins: tap **原生介面** to show and control only that plug-in's real REAPER window. It waits until the requested window appears and never falls back to the desktop or an unrelated window.
 
 ## Architecture
@@ -36,7 +37,7 @@ iPad PWA
 REAPER FX parameters ↔ ReaScript normalized values ↔ large iPad-native controls
 ```
 
-The bridge runs on REAPER's UI/deferred-script loop. When an iPad plug-in page is open it automatically installs and enables the included transparent `RTR Spectrum Probe` JSFX immediately before that plug-in. The probe passes audio through unchanged and performs the FFT inside REAPER. It is removed from the chain when the page closes, the last remote disconnects, or the Bridge stops, so stale analyzer FX are not left in the project. The browser never receives audio—only 64 normalized spectrum bins and peak values. The OUT meter is REAPER's authoritative track output meter.
+The bridge runs on REAPER's UI/deferred-script loop. When an iPad plug-in page is open it automatically installs two transparent `RTR Spectrum Probe` JSFX instances immediately before and after that plug-in. They pass audio through unchanged and perform the input/output FFT inside REAPER. They are removed when the page closes, the last remote disconnects, or the Bridge stops, so stale analyzer FX are not left in the project. The browser never receives audio—only normalized spectrum bins and peak values. Parameter names, formatted values, switches, and current normalized values always come back from the real REAPER instance.
 
 ## Requirements
 
@@ -118,7 +119,7 @@ Automated tests cover snapshot/update classification. CI tests Node on Linux and
 
 - **Waiting for REAPER:** confirm the ReaScript is running and the bridge paths printed by Node and returned by `reaper.GetResourcePath()` match.
 - **ADD PLUGIN says the inventory is unavailable:** restart the updated Bridge ReaScript once; it builds the installed plug-in index at startup.
-- **No spectrum yet:** play or monitor audio, open a plug-in from its blue rack slot, and confirm the updated Bridge is running. The input analyzer is active only while a plug-in page is open.
+- **No spectrum yet:** play or monitor audio, open a plug-in from its blue rack slot, and confirm the updated Bridge is running. Input/output analysis is active only while a plug-in page is open.
 - **iPad cannot connect:** use the numeric Mac IP, allow incoming Node connections in the macOS firewall, and disable Wi-Fi AP/client isolation.
 - **No plug-in video:** leave the iPad on the waiting screen, float/open the requested FX, grant Screen Recording, then restart if macOS requests it. The page reconnects automatically when the exact window appears. Some bridged or sandboxed plug-ins may own windows under a different bundle and need matcher work.
 - **Video but no touch:** grant Accessibility and restart the helper.
