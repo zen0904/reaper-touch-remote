@@ -15,3 +15,13 @@ test("per-plug-in bypass keeps a non-shrinking touch target", () => {
   assert.match(finalRackRule, /\.fx \.bypass\{[^}]*min-width:37px/);
   assert.match(finalRackRule, /\.fx>span\{min-width:0/);
 });
+
+test("the whole rotary card is an iPad touch target", () => {
+  assert.match(source, /\.parameter\.rotary\{touch-action:none/);
+  assert.match(source, /\.parameter\.rotary \.knob,[^{]*\{pointer-events:none\}/);
+});
+
+test("zero Range makes inactive Threshold dynamics visible", () => {
+  assert.match(source, /\.threshold-control\.range-zero/);
+  assert.match(source, /RANGE 0 · DYN OFF/);
+});
