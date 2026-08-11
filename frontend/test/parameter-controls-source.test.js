@@ -16,9 +16,11 @@ test("Threshold tells the user when zero Range prevents dynamics", () => {
 });
 
 test("a second touch cancels rotary control and scrolls the parameter page", () => {
-  assert.match(source, /parameterTouches\.size<2\|\|parameterScrollGesture/);
+  assert.match(source, /addEventListener\("touchstart"/);
+  assert.match(source, /addEventListener\("touchmove"/);
+  assert.match(source, /event\.touches\.length<2/);
   assert.match(source, /for\(const rotary of activeParameterRotaries\.values\(\)\)rotary\.cancel\(\)/);
-  assert.match(source, /els\.panel\.scrollTop=parameterScrollGesture\.originScrollTop/);
+  assert.match(source, /els\.panel\.scrollTop=parameterTouchScroll\.originScrollTop/);
   assert.match(source, /兩指捲動參數頁 · 單指調整旋鈕/);
-  assert.match(source, /suppressedParameterPointers\.has\(e\.pointerId\)/);
+  assert.match(source, /parameterTouchScrollBlocked/);
 });

@@ -17,10 +17,9 @@ if (location.hostname && settings.host !== location.hostname) {
 let socket, heartbeat, reconnectTimer, state, bank=0, bankSize=8, latency=0, bridgeOnline=false, activeFX=null, activeParameterGroup=null, fxBrowserTrack=null, renameTarget=null, installedFX=null;
 let nativeMode=false,nativeFXKey="",nativeSession=0,nativePointerId=null,nativeLastPoint=null,nativeMoveFrame=0,pendingNativeMove=null;
 const pointers = new Map();
-const parameterTouches = new Map();
 const activeParameterRotaries = new Map();
-const suppressedParameterPointers = new Set();
-let parameterScrollGesture = null;
+let parameterTouchScroll = null;
+let parameterTouchScrollBlocked = false;
 const interactionLocks = new Map();
 const smoothCommands=new Map();let smoothFrame=0;
 const EQ_GEOMETRY={width:1000,height:600,insetX:38,insetY:58};
@@ -54,35 +53,23 @@ function settleInteraction(key){interactionLocks.set(key,performance.now()+110);
 function pressFeedback(element){if(!element)return;navigator.vibrate?.(6);element.classList.remove("tap-feedback");requestAnimationFrame(()=>element.classList.add("tap-feedback"));setTimeout(()=>element.classList.remove("tap-feedback"),360)}
 let feedbackTimer;function announceFeedback(text){if(!els.feedback)return;clearTimeout(feedbackTimer);els.feedback.textContent=text;els.feedback.classList.add("show");feedbackTimer=setTimeout(()=>els.feedback.classList.remove("show"),850)}
 function bindParameterPanelGestures(){
-  const point=event=>({clientY:event.clientY});
-  els.panel.addEventListener("pointerdown",event=>{
-    if(event.pointerType!=="touch")return;
-    parameterTouches.set(event.pointerId,point(event));
-    if(parameterTouches.size<2||parameterScrollGesture)return;
-    const ids=[...parameterTouches.keys()].slice(0,2),points=ids.map(id=>parameterTouches.get(id));
-    parameterScrollGesture={ids,originY:(points[0].clientY+points[1].clientY)/2,originScrollTop:els.panel.scrollTop};
-    for(const id of parameterTouches.keys())suppressedParameterPointers.add(id);
-    for(const rotary of activeParameterRotaries.values())rotary.cancel();
-    els.panel.classList.add("two-finger-scrolling");
-    announceFeedback("兩指捲動參數頁 · 單指調整旋鈕");
+  const averageY=touches=>{let total=0;const count=Math.min(2,touches.length);for(let index=0;index<count;index++)total+=touches.item(index).clientY;return count?total/count:0};
+  els.panel.addEventListener("touchstart",event=>{
+    if(event.touches.length<2)return;
+    const firstFrame=!parameterTouchScroll;parameterTouchScroll={originY:averageY(event.touches),originScrollTop:els.panel.scrollTop};parameterTouchScrollBlocked=true;
+    if(firstFrame){for(const rotary of activeParameterRotaries.values())rotary.cancel();els.panel.classList.add("two-finger-scrolling");announceFeedback("兩指捲動參數頁 · 單指調整旋鈕")}
     event.preventDefault();
   },{capture:true,passive:false});
-  els.panel.addEventListener("pointermove",event=>{
-    const touch=parameterTouches.get(event.pointerId);if(!touch)return;
-    touch.clientY=event.clientY;if(!parameterScrollGesture)return;
-    const points=parameterScrollGesture.ids.map(id=>parameterTouches.get(id));if(points.some(item=>!item))return;
-    event.preventDefault();const currentY=(points[0].clientY+points[1].clientY)/2;
-    els.panel.scrollTop=parameterScrollGesture.originScrollTop+parameterScrollGesture.originY-currentY;
+  els.panel.addEventListener("touchmove",event=>{
+    if(!parameterTouchScroll)return;event.preventDefault();if(event.touches.length<2)return;
+    els.panel.scrollTop=parameterTouchScroll.originScrollTop+parameterTouchScroll.originY-averageY(event.touches);
   },{capture:true,passive:false});
   const end=event=>{
-    if(event.pointerType!=="touch"||!parameterTouches.has(event.pointerId))return;
-    parameterTouches.delete(event.pointerId);
-    if(parameterScrollGesture)event.preventDefault();
-    if(!parameterTouches.size&&parameterScrollGesture){parameterScrollGesture=null;els.panel.classList.remove("two-finger-scrolling")}
-    setTimeout(()=>suppressedParameterPointers.delete(event.pointerId),0);
+    if(!parameterTouchScroll)return;event.preventDefault();if(event.touches.length)return;
+    parameterTouchScroll=null;els.panel.classList.remove("two-finger-scrolling");setTimeout(()=>{parameterTouchScrollBlocked=false},120);
   };
-  els.panel.addEventListener("pointerup",end,{capture:true,passive:false});
-  els.panel.addEventListener("pointercancel",end,{capture:true,passive:false});
+  els.panel.addEventListener("touchend",end,{capture:true,passive:false});
+  els.panel.addEventListener("touchcancel",end,{capture:true,passive:false});
 }
 function animateSurface(){els.surface.classList.remove("switching");requestAnimationFrame(()=>els.surface.classList.add("switching"));setTimeout(()=>els.surface.classList.remove("switching"),260)}
 function render(){
@@ -107,7 +94,7 @@ function renderFxResults(){
   els.fxResults.replaceChildren(...matches.map(fx=>{const button=document.createElement("button");button.className="fx-result";const type=(fx.name.match(/^([^:]+):/)?.[1]||"FX").toUpperCase();button.innerHTML='<b></b><span></span><small></small>';button.querySelector("b").textContent=type;button.querySelector("span").textContent=fx.name.replace(/^[^:]+:\s*/,"");button.querySelector("small").textContent=fx.ident||fx.name;button.onclick=()=>{if(!fxBrowserTrack)return;command("add_fx",fxBrowserTrack.id,fx.name);els.fxBrowser.close();flashButton($("#showPanel"),"ADDING FX")};return button}))
 }
 function openRenameRack(track){renameTarget=track;$("#rackName").value=track.name||`Track ${track.number}`;$("#renameRack").showModal();$("#rackName").focus();$("#rackName").select()}
-function bindButton(button,callback,active=false){button.classList.toggle("active",active);button.onpointerdown=e=>{if(button.disabled)return;if(e.pointerType==="touch"&&button.closest("#parameterPanel")&&(parameterScrollGesture||suppressedParameterPointers.has(e.pointerId))){e.preventDefault();return}e.preventDefault();button.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{kind:"button",button});button.classList.add("pressed")};button.onpointerup=e=>{const suppressed=e.pointerType==="touch"&&button.closest("#parameterPanel")&&suppressedParameterPointers.has(e.pointerId);if(!suppressed&&pointers.get(e.pointerId)?.button===button){button.classList.add("pending");pressFeedback(button);callback(button);setTimeout(()=>button.isConnected&&button.classList.remove("pending"),520)}pointers.delete(e.pointerId);button.classList.remove("pressed")};button.onpointercancel=button.onlostpointercapture=e=>{pointers.delete(e.pointerId);button.classList.remove("pressed")}}
+function bindButton(button,callback,active=false){button.classList.toggle("active",active);button.onpointerdown=e=>{if(button.disabled)return;if(e.pointerType==="touch"&&button.closest("#parameterPanel")&&parameterTouchScrollBlocked){e.preventDefault();return}e.preventDefault();button.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{kind:"button",button});button.classList.add("pressed")};button.onpointerup=e=>{const suppressed=e.pointerType==="touch"&&button.closest("#parameterPanel")&&parameterTouchScrollBlocked;if(!suppressed&&pointers.get(e.pointerId)?.button===button){button.classList.add("pending");pressFeedback(button);callback(button);setTimeout(()=>button.isConnected&&button.classList.remove("pending"),520)}pointers.delete(e.pointerId);button.classList.remove("pressed")};button.onpointercancel=button.onlostpointercapture=e=>{pointers.delete(e.pointerId);button.classList.remove("pressed")}}
 function renderMeters(){if(!state)return;document.querySelectorAll(".strip").forEach(strip=>{const track=state.tracks.find(t=>t.id===strip.dataset.id);if(track){const peak=Math.max(...(track.meter||[-100]));strip.querySelector(".meter-fill").style.width=`${Math.max(0,Math.min(100,(peak+60)/60*100))}%`}})}
 function fxIdentity(fx){return fx?`${fx.trackId}|${fx.id||fx.fxIndex}`:""}
 function openPlugin(track,fx){const wasOpen=!els.pluginView.hidden;if(nativeMode)leaveNativeMode({rerender:false,stopCapture:false});activeFX={trackId:track.id,fxIndex:fx.index,id:fx.id,name:fx.name,enabled:fx.enabled};activeParameterGroup=null;command("open_fx",`${track.id}|${fx.index}`);$("#pluginTrack").textContent=track.name||`Rack ${track.number}`;$("#pluginName").textContent=fx.name;updateRackNavigation(track);renderRackChain(track);els.panel.dataset.key="";els.visual.dataset.key="";els.tabs.replaceChildren();els.panel.innerHTML='<div class="plugin-message">Loading real parameters from REAPER…</div>';els.visual.innerHTML='<div class="visual-loading">BUILDING TOUCH UI</div>';els.pluginView.hidden=false;if(wasOpen)animateSurface();else{els.pluginView.classList.add("revealing");setTimeout(()=>els.pluginView.classList.remove("revealing"),300)}renderPluginParameters()}
@@ -257,7 +244,7 @@ function parameterControl(param,selected,options={}){
   let originY=0,originX=0,originValue=0,dragAxis=null;const pointerKey=`fx:${param.index}`;
   const update=event=>{const dx=event.clientX-originX,dy=originY-event.clientY;if(!dragAxis&&Math.max(Math.abs(dx),Math.abs(dy))>=3)dragAxis=Math.abs(dy)>=Math.abs(dx)?"vertical":"horizontal";if(!dragAxis)return;const distance=(dragAxis==="horizontal"?dx:dy)*(options.sensitivity??1),value=rotaryDragValue(originValue,distance,event.pointerType);control.dataset.value=value;paintKnob(knob,value);output.textContent=`${Math.round(value*100)}%`;smoothCommand("set_fx_param",target,value)};
   const cancel=()=>{if(pointers.has(pointerKey)){pointers.delete(pointerKey);settleInteraction(pointerKey)}smoothCommands.delete(`set_fx_param|${target}`);knob.classList.remove("turning");control.classList.remove("interacting")};
-  control.onpointerdown=event=>{if(event.pointerType==="mouse"&&event.button!==0)return;if(event.pointerType==="touch"&&parameterScrollGesture){event.preventDefault();return}event.preventDefault();control.setPointerCapture(event.pointerId);originY=event.clientY;originX=event.clientX;originValue=+control.dataset.value||0;dragAxis=null;pointers.set(pointerKey,event.pointerId);activeParameterRotaries.set(event.pointerId,{cancel});knob.classList.add("turning");control.classList.add("interacting");navigator.vibrate?.(5);if(threshold)announceFeedback(rangeIsZero?"THRESHOLD 可調 · RANGE 0 dB，DYN 尚未作動":"THRESHOLD · 向下拉降低，向上拉提高")};
+  control.onpointerdown=event=>{if(event.pointerType==="mouse"&&event.button!==0)return;if(event.pointerType==="touch"&&parameterTouchScrollBlocked){event.preventDefault();return}event.preventDefault();control.setPointerCapture(event.pointerId);originY=event.clientY;originX=event.clientX;originValue=+control.dataset.value||0;dragAxis=null;pointers.set(pointerKey,event.pointerId);activeParameterRotaries.set(event.pointerId,{cancel});knob.classList.add("turning");control.classList.add("interacting");navigator.vibrate?.(5);if(threshold)announceFeedback(rangeIsZero?"THRESHOLD 可調 · RANGE 0 dB，DYN 尚未作動":"THRESHOLD · 向下拉降低，向上拉提高")};
   control.onpointermove=event=>{if(pointers.get(pointerKey)===event.pointerId)update(event)};
   const end=event=>{activeParameterRotaries.delete(event.pointerId);if(pointers.get(pointerKey)===event.pointerId){pointers.delete(pointerKey);settleInteraction(pointerKey);pressFeedback(control)}knob.classList.remove("turning");control.classList.remove("interacting")};control.onpointerup=end;control.onpointercancel=end;control.onlostpointercapture=end;return control
 }
