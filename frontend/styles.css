@@ -117,3 +117,4 @@ dialog{border-color:#2a3b4b;border-radius:16px;background:#0d151eeF;box-shadow:0
 
 /* The whole rotary card is the touch target; Threshold also explains when Range disables dynamics. */
 .parameter.rotary{touch-action:none;cursor:ns-resize}.parameter.rotary .knob,.parameter.rotary label,.parameter.rotary output{pointer-events:none}.threshold-control.range-zero{border-color:#765f2e;box-shadow:inset 0 0 0 1px #f3bd4f20}.threshold-control.range-zero label::after{content:"RANGE 0 · DYN OFF";float:right;margin-left:6px;color:#f3bd4f;font-size:8px;font-weight:900;letter-spacing:.04em}.threshold-control.interacting output{color:#ffe19a;border-color:#8d7134}
+.parameter-panel.two-finger-scrolling{scroll-behavior:auto;cursor:grabbing}.parameter-panel.two-finger-scrolling .parameter{border-color:#477387}.parameter-panel.two-finger-scrolling .knob{filter:none}

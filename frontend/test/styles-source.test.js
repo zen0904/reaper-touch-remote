@@ -25,3 +25,7 @@ test("zero Range makes inactive Threshold dynamics visible", () => {
   assert.match(source, /\.threshold-control\.range-zero/);
   assert.match(source, /RANGE 0 · DYN OFF/);
 });
+
+test("two-finger parameter scrolling has immediate visual feedback", () => {
+  assert.match(source, /\.parameter-panel\.two-finger-scrolling\{scroll-behavior:auto/);
+});

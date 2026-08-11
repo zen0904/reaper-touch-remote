@@ -1,5 +1,5 @@
-const CACHE="rtr-v26";
-const ASSETS=["/","/styles.css?v=26","/app.js?v=26","/control-physics.js","/rack-navigation.js","/plugin-profiles.js","/native-pointer.js","/manifest.webmanifest","/icons/icon-192.svg","/icons/icon-512.svg"];
+const CACHE="rtr-v27";
+const ASSETS=["/","/styles.css?v=27","/app.js?v=27","/control-physics.js","/rack-navigation.js","/plugin-profiles.js","/native-pointer.js","/manifest.webmanifest","/icons/icon-192.svg","/icons/icon-512.svg"];
 
 self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS))));
 self.addEventListener("activate",event=>event.waitUntil(Promise.all([
