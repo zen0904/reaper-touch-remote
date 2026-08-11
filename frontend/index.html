@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#080b0f">
+  <meta name="theme-color" content="#06090e">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/icon-192.svg">
-  <link rel="stylesheet" href="/styles.css?v=14">
+  <link rel="stylesheet" href="/styles.css?v=15">
   <title>REAPER Touch Remote</title>
 </head>
 <body>
@@ -26,8 +26,15 @@
     <section id="mixer" class="mixer" aria-label="Track mixer"></section>
     <section id="empty" class="empty"><h1>Waiting for REAPER</h1><p>Run the bridge ReaScript in REAPER. Audio remains entirely inside REAPER.</p></section>
     <section id="pluginView" class="plugin-view" hidden>
-      <nav><button id="pluginBack">RACKS</button><button id="pluginPrev">◀ FX</button><div><strong id="pluginTrack"></strong><span id="pluginName"></span></div><button id="pluginBypass">BYPASS</button><button id="pluginNext">FX ▶</button></nav>
-      <div class="plugin-workspace"><aside><h3>RACK</h3><div id="rackChain" class="rack-chain"></div></aside><div id="pluginSurface" class="plugin-surface"><div id="pluginVisual" class="plugin-visual"></div><div id="parameterTabs" class="parameter-tabs"></div><div id="parameterPanel" class="parameter-panel"><div class="plugin-message">Loading parameters from REAPER…</div></div></div></div>
+      <nav class="plugin-nav">
+        <button id="pluginBack" class="nav-back">‹ ALL RACKS</button>
+        <div class="rack-pager"><button id="rackPrev" aria-label="Previous rack">‹</button><div><small id="rackPosition">RACK —</small><strong id="pluginTrack"></strong></div><button id="rackNext" aria-label="Next rack">›</button></div>
+        <div class="plugin-identity"><small>ACTIVE PLUGIN</small><span id="pluginName"></span></div>
+        <div class="fx-pager"><button id="pluginPrev">‹ FX</button><button id="pluginNext">FX ›</button></div>
+        <button id="pluginBypass">ACTIVE</button>
+      </nav>
+      <div class="plugin-workspace"><aside><div class="rack-rail-head"><span>PLUGIN CHAIN</span><b id="rackCount">0 FX</b></div><div id="rackChain" class="rack-chain"></div></aside><div id="pluginSurface" class="plugin-surface"><div id="pluginVisual" class="plugin-visual"></div><div id="parameterTabs" class="parameter-tabs"></div><div id="parameterPanel" class="parameter-panel"><div class="plugin-message">Loading parameters from REAPER…</div></div></div></div>
+      <div id="touchFeedback" class="touch-feedback" aria-live="polite"></div>
     </section>
     <footer class="hotbar"><button id="showPanel">SHOW</button><button id="quickSave">SAVE SNAP</button><div class="hot-group"><span>USER KEYS</span><button data-user-key="0">1</button><button data-user-key="1">2</button><button data-user-key="2">3</button><button data-user-key="3">4</button></div><div class="hot-group"><span>HOT FX</span><button data-hot-fx="0">1</button><button data-hot-fx="1">2</button><button data-hot-fx="2">3</button><button data-hot-fx="3">4</button></div></footer>
     <dialog id="settings"><form method="dialog"><h2>Connection</h2><label>Host or IP<input id="host" inputmode="url" autocomplete="off"></label><label>Port<input id="port" type="number" min="1" max="65535"></label><label class="checkbox"><input id="auto" type="checkbox" checked> Auto reconnect</label><p id="details"></p><menu><button value="cancel">CANCEL</button><button id="saveConnection" value="default">CONNECT</button></menu></form></dialog>
@@ -36,6 +43,6 @@
     <dialog id="renameRack"><form method="dialog"><h2>RENAME RACK</h2><label>Track name<input id="rackName" maxlength="64" autocomplete="off"></label><menu><button value="cancel">CANCEL</button><button id="saveRackName" value="default">SAVE</button></menu></form></dialog>
     <div id="rotate">Rotate to landscape for the live console layout.</div>
   </main>
-  <script type="module" src="/app.js?v=14"></script>
+  <script type="module" src="/app.js?v=15"></script>
 </body>
 </html>
