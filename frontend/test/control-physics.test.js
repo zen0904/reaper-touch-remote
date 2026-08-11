@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { eqPinchQValue, eqPointerValue, rotaryDragValue } from "../control-physics.js";
+import { eqPinchQValue, eqPointerValue, rotaryDragValue, smoothSpectrumFrame } from "../control-physics.js";
 
 test("rotary drag keeps small touch movements precise and accelerates long throws", () => {
   assert.ok(rotaryDragValue(0.5, 10, "touch") < 0.52);
@@ -23,4 +23,10 @@ test("EQ pinch widens on spread and narrows on pinch", () => {
   assert.ok(eqPinchQValue(0.5, 100, 55) > 0.5);
   assert.equal(eqPinchQValue(0.95, 100, 5), 1);
   assert.equal(eqPinchQValue(0.05, 100, 500), 0);
+});
+
+test("spectrum smoothing attacks faster than it releases", () => {
+  const [attack, release] = smoothSpectrumFrame([0.2, 0.8], [1, 0]);
+  assert.ok(Math.abs(attack - 0.664) < 1e-9);
+  assert.ok(Math.abs(release - 0.64) < 1e-9);
 });

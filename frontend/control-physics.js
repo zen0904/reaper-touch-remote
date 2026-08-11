@@ -31,3 +31,14 @@ export function eqPinchQValue(originValue, originDistance, currentDistance) {
   const current = Math.max(12, Number(currentDistance) || 12);
   return clamp01(originValue - Math.log2(current / start) * 0.42);
 }
+
+// Fast attack keeps transients visible while a slower release prevents the RTA
+// from jumping between analyzer frames on a touch display.
+export function smoothSpectrumFrame(previous = [], next = [], attack = 0.58, release = 0.2) {
+  return next.map((raw, index) => {
+    const value = clamp01(raw);
+    const before = clamp01(previous[index]);
+    const amount = value >= before ? attack : release;
+    return before + (value - before) * amount;
+  });
+}
